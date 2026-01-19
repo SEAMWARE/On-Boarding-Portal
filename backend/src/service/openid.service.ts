@@ -43,6 +43,23 @@ class OidcService {
         res.redirect(redirectTo.toString())
     }
 
+    async refresh(req: Request, res: Response) {
+        const { refreshToken } = req.body;
+        if (!refreshToken) {
+            return res.status(400).json({ error: 'Refresh token is required' });
+        }
+
+        const issuer = await this.getIssuer();
+
+        const newToken = await client.refreshTokenGrant(issuer,refreshToken);
+        this._setTokenCookie(newToken, req, res);
+        res.json({
+            access_token: newToken.access_token,
+            refresh_token: newToken.refresh_token,
+            expires_in: newToken.expires_in
+        });
+    }
+
     async callback(req: Request, res: Response) {
 
         const verifier = req.cookies?.pkce_verifier;
@@ -56,14 +73,14 @@ class OidcService {
             params.pkceCodeVerifier = verifier;
         }
         try {
-            let tokens: client.TokenEndpointResponse = await client.authorizationCodeGrant(
+            let token: client.TokenEndpointResponse = await client.authorizationCodeGrant(
                 issuer, url, params
             )
-            const accessToken = tokens.access_token;
-            res.cookie('authorization', accessToken, { httpOnly: req.protocol === 'https', maxAge: tokens.expires_in ? tokens.expires_in * 1000 : undefined });
-            let callbackPath = `/callback?access_token=${accessToken}`;
-            if (tokens.refresh_token) {
-                callbackPath += `&refresh_token=${tokens.refresh_token}`;
+            this._setTokenCookie(token, req, res);
+
+            let callbackPath = `/callback?access_token=${token.accessToken}`;
+            if (token.refresh_token) {
+                callbackPath += `&refresh_token=${token.refresh_token}`;
             }
             res.redirect(callbackPath);
         } catch (err) {
@@ -79,7 +96,7 @@ class OidcService {
         if (!this.jwks) {
             this.jwks = createRemoteJWKSet(new URL(metadata.jwks_uri!))
         }
-        const result = await jwtVerify(accessToken, this.jwks, {issuer: metadata.issuer})
+        const result = await jwtVerify(accessToken, this.jwks, { issuer: metadata.issuer })
         return result.payload;
     }
 
@@ -97,6 +114,11 @@ class OidcService {
 
     private _getHostUrl(req: Request) {
         return `${req.protocol}://${req.get('host')}`
+    }
+
+    private _setTokenCookie(token: client.TokenEndpointResponse, req: Request, res: Response) {
+        res.cookie('authorization', token.access_token, { httpOnly: req.protocol === 'https', maxAge: token.expires_in ? token.expires_in * 1000 : undefined });
+        res.cookie('refresh_token', token.refresh_token, { httpOnly: req.protocol === 'https' });
     }
 }
 
