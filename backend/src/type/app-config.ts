@@ -1,9 +1,11 @@
 import { CorsOptions } from "cors";
+import { DataSourceOptions } from "typeorm";
 
 export interface AppConfig {
     server: ServerConfig
     logging: Logging
     app: AppCfg
+    database: DataSourceOptions;
 }
 
 export interface ServerConfig {

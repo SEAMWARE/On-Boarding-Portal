@@ -1,9 +1,11 @@
 import express from 'express';
-import { configService } from './services/config-service';
-import { logger, requestLogger } from './services/logger';
+import { configService } from './service/config-service';
+import { logger, requestLogger } from './service/logger';
 import path from 'path';
 import ejs from 'ejs';
 import cors from 'cors';
+import initializeDataSource from './service/data-source';
+
 const appServer = express();
 
 const { server, app } = configService.get();
@@ -33,24 +35,34 @@ appServer.use((_req, res) => {
   })
 });
 
-const runningServer = appServer.listen(server.port, () => {
-  logger.info(`Server running at http://localhost:${server.port}`);
-});
 
+(async () => {
+  try {
+    await initializeDataSource(configService.get())
+  } catch (error) {
+      logger.error('Error connecting to the database', error);
+      process.exit(1);
+  }
 
-const shutdown = () => {
-  runningServer.close(() => {
-    logger.info('HTTP server closed');
-    logger.close();
-    process.exit(0);
+  const runningServer = appServer.listen(server.port, () => {
+    logger.info(`Server running at http://localhost:${server.port}`);
   });
-}
-process.on('SIGTERM', async () => {
-  logger.info('SIGTERM received: closing server gracefully');
-  shutdown()
-});
 
-process.on('SIGINT', () => {
-  logger.info('SIGINT received: exiting');
-  shutdown()
-});
+
+  const shutdown = () => {
+    runningServer.close(() => {
+      logger.info('HTTP server closed');
+      logger.close();
+      process.exit(0);
+    });
+  }
+  process.on('SIGTERM', async () => {
+    logger.info('SIGTERM received: closing server gracefully');
+    shutdown()
+  });
+
+  process.on('SIGINT', () => {
+    logger.info('SIGINT received: exiting');
+    shutdown()
+  });
+})();

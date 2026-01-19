@@ -2,7 +2,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
-import { AppConfig } from '../types/app-config';
+import { AppConfig } from '../type/app-config';
 
 class ConfigService {
   defaultConfigFiles = ['application.default.yaml', 'config/application.default.yaml'];
@@ -34,25 +34,38 @@ class ConfigService {
     return yaml.load(contents) as Record<string, any>;
   }
 
-  private deepMerge(
+private deepMerge(
     target: Record<string, any>,
     source: Record<string, any>
   ): Record<string, any> {
     const result = { ...target };
 
     for (const key of Object.keys(source)) {
-      if (
-        source[key] &&
-        typeof source[key] === 'object' &&
-        !Array.isArray(source[key])
-      ) {
-        result[key] = this.deepMerge(target[key] ?? {}, source[key]);
+      const value = source[key];
+
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        result[key] = this.deepMerge(target[key] ?? {}, value);
       } else {
-        result[key] = source[key];
+        result[key] = this._resolveValue(value);
       }
     }
 
     return result;
+  }
+
+private _resolveValue(value: any): any {
+    if (typeof value === 'string') {
+      const regex = /\${(\w+)}/g;
+      return value.replace(regex, (_, envVarName) => {
+        return process.env[envVarName] ?? `\${${envVarName}}`;
+      });
+    }
+
+    if (Array.isArray(value)) {
+      return value.map(item => this._resolveValue(item));
+    }
+
+    return value;
   }
 }
 

@@ -18,3 +18,12 @@ server:
     maxAge: 600
 logging:
   level: info
+database:
+  type: postgres
+  host: localhost
+  port: 5432
+  username: postgres
+  password: postgres
+  database: onboarding
+  synchronize: true
+  logging: true
