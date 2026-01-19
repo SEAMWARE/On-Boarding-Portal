@@ -1,10 +1,12 @@
 import express from 'express';
-import { configService } from './service/config-service';
+import { configService } from './service/config.service';
 import { logger, requestLogger } from './service/logger';
 import path from 'path';
 import ejs from 'ejs';
 import cors from 'cors';
-import initializeDataSource from './service/data-source';
+import initializeDataSource from './service/data.source';
+import oidcController from './controller/openid.controller';
+import cookieParser from 'cookie-parser';
 
 const appServer = express();
 
@@ -18,12 +20,16 @@ appServer.disable('x-powered-by');
 appServer.use(requestLogger);
 appServer.use(express.static(angularDistPath));
 appServer.set('trust proxy', true);
+appServer.use(cookieParser())
 
 
 // Health check route
 appServer.get('/', (_req, res) => {
   res.send('Server is running!');
 });
+
+// login
+appServer.use('/api', oidcController)
 
 appServer.use((_req, res) => {
   ejs.renderFile(indexPath, {...app}, (err, str) => {

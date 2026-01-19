@@ -22,8 +22,15 @@ database:
   type: postgres
   host: localhost
   port: 5432
-  username: postgres
-  password: postgres
+  username: ''
+  password: ''
   database: onboarding
   synchronize: true
-  logging: true
+  logging: false
+app:
+  login:
+    openIdUrl: ''
+    clientId: ''
+    clientSecret: ''
+    scope: openid
+    codeChallenge: true

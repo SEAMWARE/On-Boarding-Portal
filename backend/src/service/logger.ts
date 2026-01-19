@@ -1,5 +1,5 @@
 import { createLogger, format, transports } from 'winston';
-import { configService } from './config-service';
+import { configService } from './config.service';
 import { Request, Response, NextFunction } from 'express';
 
 const logLevel = configService.get().logging.level;

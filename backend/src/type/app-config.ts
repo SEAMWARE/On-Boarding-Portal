@@ -19,5 +19,15 @@ export interface Logging {
 }
 
 export interface AppCfg {
+    login: LoginConfig;
+}
 
+export interface LoginConfig {
+    openIdUrl: string;
+    clientId: string;
+    clientSecret: string;
+    scope: string;
+    serverHost: string;
+    defaultNamespace: string;
+    codeChallenge: boolean;
 }

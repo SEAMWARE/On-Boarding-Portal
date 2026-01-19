@@ -22,7 +22,7 @@ RUN pnpm prune --prod
 # ----------------------------
 # Stage 2: Final image
 # ----------------------------
-FROM node:22-slum
+FROM node:22-slim
 
 WORKDIR /app
 EXPOSE 8080
