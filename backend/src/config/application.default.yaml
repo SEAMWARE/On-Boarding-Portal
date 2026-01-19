@@ -1,0 +1,20 @@
+server:
+  port: 8080
+  staticPath: ./static
+  cors:
+    origin: "*"
+    methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+    allowedHeaders:
+      - Content-Type
+      - Authorization
+      - X-Organization
+    credentials: true
+    optionsSuccessStatus: 204
+    maxAge: 600
+logging:
+  level: info
