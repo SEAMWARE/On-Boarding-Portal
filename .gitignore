@@ -2,3 +2,4 @@ node_modules
 dist
 .vscode
 backend/src/config/application.yaml
+.angular
