@@ -12,6 +12,7 @@ export interface ServerConfig {
     port: number;
     staticPath: string;
     cors: CorsOptions;
+    storage: StorageConfig;
 }
 
 export interface Logging {
@@ -30,4 +31,9 @@ export interface LoginConfig {
     serverHost: string;
     defaultNamespace: string;
     codeChallenge: boolean;
+}
+
+export interface StorageConfig {
+    destFolder: string;
+    maxSizeMB: number;
 }

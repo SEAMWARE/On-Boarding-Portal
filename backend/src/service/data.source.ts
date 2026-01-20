@@ -1,8 +1,14 @@
 import "reflect-metadata";
 import { DataSource } from "typeorm";
-import { AppConfig } from "../type/app-config";
-import { Request } from "../entity/Request";
+import { Request } from "../entity/request.entity";
+import { configService } from "./config.service";
 
-export default function initializeDataSource(config: AppConfig): Promise<DataSource> {
-    return new DataSource({...config.database, entities: [Request]}).initialize();
+const config = configService.get();
+export const AppDataSource: DataSource = new DataSource({...config.database, entities: [Request]});
+
+export async function initializeDatabase(): Promise<DataSource> {
+    if (!AppDataSource.isInitialized) {
+        await AppDataSource.initialize();
+    }
+    return AppDataSource;
 }

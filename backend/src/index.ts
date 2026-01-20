@@ -4,9 +4,14 @@ import { logger, requestLogger } from './service/logger';
 import path from 'path';
 import ejs from 'ejs';
 import cors from 'cors';
-import initializeDataSource from './service/data.source';
+import { initializeDatabase } from './service/data.source';
+'./service/data.source';
+
 import oidcController from './controller/openid.controller';
+import submitController from './controller/submit.controller';
+
 import cookieParser from 'cookie-parser';
+
 
 const appServer = express();
 
@@ -29,10 +34,10 @@ appServer.get('/', (_req, res) => {
 });
 
 // login
-appServer.use('/api', oidcController)
+appServer.use('/api', oidcController, submitController)
 
 appServer.use((_req, res) => {
-  ejs.renderFile(indexPath, {...app}, (err, str) => {
+  ejs.renderFile(indexPath, { ...app }, (err, str) => {
     if (err) {
       logger.error(err);
       return res.status(500).send('Error rendering template');
@@ -44,10 +49,10 @@ appServer.use((_req, res) => {
 
 (async () => {
   try {
-    await initializeDataSource(configService.get())
+    await initializeDatabase()
   } catch (error) {
-      logger.error('Error connecting to the database', error);
-      process.exit(1);
+    logger.error('Error connecting to the database', error);
+    process.exit(1);
   }
 
   const runningServer = appServer.listen(server.port, () => {

@@ -1,6 +1,9 @@
 server:
   port: 8080
   staticPath: ./static
+  storage:
+    destFolder: files
+    maxSizeMB: 5
   cors:
     origin: "*"
     methods:

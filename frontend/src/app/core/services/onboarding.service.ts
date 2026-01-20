@@ -51,10 +51,7 @@ export class OnBoardingService {
 
     _getHeaders(): HttpHeaders {
 
-        const org = this.authService.getUser()?.verifiableCredential?.issuer!;
-        return new HttpHeaders({
-            'x-organization': org,
-        });
+        return new HttpHeaders();
     }
 
     _resolveUrl(path: string): string {
