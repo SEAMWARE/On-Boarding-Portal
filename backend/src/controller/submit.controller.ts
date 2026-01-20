@@ -2,7 +2,7 @@ import { Router } from "express";
 import { getFilesPath, removeFolder, saveFiles, uploadFiles } from "../middleware/storage.middleware";
 
 import { logger } from '../service/logger';
-import { requestRepository } from "../repository/request.repository";
+import { registrationRepository } from "../repository/registration.repository";
 import { isDuplicatedKeyError } from "../type/db-errors";
 import { generateDid } from "../service/did.service";
 import { sendEmail } from "../service/email.service";
@@ -24,15 +24,15 @@ router.post('/submit', uploadFiles('files', { maxCount: 5, allowedTypes: /pdf/ }
     logger.debug(`Files received: ${uploadedFiles ? uploadedFiles.length : 0}`);
 
     filePath = getFilesPath(did);
-    const requestResult = await requestRepository.createRequest(email, did, filePath);
+    const registration = await registrationRepository.createRegistration(email, did, filePath);
 
     if (uploadedFiles && uploadedFiles.length != 0) {
       filePath = await saveFiles(did, uploadedFiles)
     }
 
     res.status(201).json({
-      requestId: requestResult.id,
-      did: requestResult.did,
+      id: registration.id,
+      did: registration.did,
       timestamp: new Date().toISOString()
     });
     sendEmail(email);
@@ -48,5 +48,25 @@ router.post('/submit', uploadFiles('files', { maxCount: 5, allowedTypes: /pdf/ }
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
+
+router.get('/submit/:id', async(req, res) => {
+
+  const id = req.params.id;
+  try {
+    const registration = await registrationRepository.findById(id);
+    if (!registration) {
+      res.status(404).json({
+        message: `Registration '${id}' does not found`
+      });
+      return
+    }
+    const {filesPath, ...response} = registration;
+    res.json(response);
+  } catch(error) {
+    logger.error(`Error getting registration '${id}'`, error)
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+
+})
 
 export default router;

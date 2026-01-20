@@ -1,6 +1,6 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 
-export enum RequestStatus {
+export enum RegistrationStatus {
     PENDING = "pending",
     SUBMITTED = "submitted",
     UNDER_REVIEW = "under_review",
@@ -9,7 +9,7 @@ export enum RequestStatus {
 }
 
 @Entity()
-export class Request {
+export class Registration {
     @PrimaryGeneratedColumn("uuid")
     id!: string;
 
@@ -20,17 +20,17 @@ export class Request {
     did!: string;
     @Column({
         type: "enum",
-        enum: RequestStatus,
-        default: RequestStatus.PENDING
+        enum: RegistrationStatus,
+        default: RegistrationStatus.PENDING
     })
-    status!: RequestStatus;
+    status!: RegistrationStatus;
 
     @Column({ nullable: true })
     filesPath?: string;
 
     @CreateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)" })
-    public createdAt?: Date;
+    createdAt?: Date;
 
     @UpdateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)", onUpdate: "CURRENT_TIMESTAMP(6)" })
-    public updatedAt?: Date;
+    updatedAt?: Date;
 }

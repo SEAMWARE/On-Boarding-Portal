@@ -1,10 +1,9 @@
 import { HttpClient, HttpHeaders } from "@angular/common/http";
-import { AuthService } from "./auth";
 import { ServerConfigService } from "./server-config";
 import { Observable } from "rxjs";
 import { Injectable } from "@angular/core";
 
-export interface RequestForm {
+export interface RegistrationForm {
     email: string;
     name: string;
     did?: string;
@@ -19,7 +18,6 @@ export class OnBoardingService {
     submitPath = '/api/submit'
     constructor(
         private readonly http: HttpClient,
-        private readonly authService: AuthService,
         config: ServerConfigService
     ) {
         this.baseUrl = config.getProperty('serverHost') || '';
@@ -28,7 +26,7 @@ export class OnBoardingService {
         }
     }
 
-    submitRequest(formValues: RequestForm, files: File[]): Observable<any> {
+    submitRegistration(formValues: RegistrationForm, files: File[]): Observable<any> {
         const url = this._resolveUrl(this.submitPath);
 
         const headers = this._getHeaders();
@@ -47,6 +45,14 @@ export class OnBoardingService {
         });
 
         return this.http.post<any>(url, body, { headers });
+    }
+
+    getRegistration(id: string): Observable<any> {
+        const url = this._resolveUrl(`${this.submitPath}/${id}`);
+
+        const headers = this._getHeaders();
+
+        return this.http.get<any>(url, { headers });
     }
 
     _getHeaders(): HttpHeaders {

@@ -12,7 +12,10 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTabsModule } from '@angular/material/tabs';
 import { Clipboard } from '@angular/cdk/clipboard';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { OnBoardingService, RequestForm } from '../../core/services/onboarding.service';
+import { OnBoardingService, RegistrationForm } from '../../core/services/onboarding.service';
+import { RegistrationDetails } from '../../core/components/registration-details/registration-details';
+import { ActivatedRoute, Router } from '@angular/router';
+import { MatChipsModule } from '@angular/material/chips';
 
 @Component({
   selector: 'app-submit',
@@ -29,27 +32,49 @@ import { OnBoardingService, RequestForm } from '../../core/services/onboarding.s
     MatProgressBarModule,
     MatDividerModule,
     MatSnackBarModule,
-    MatToolbarModule
+    MatToolbarModule,
+    RegistrationDetails,
+    MatChipsModule
   ],
   templateUrl: './submit.html',
   styleUrl: './submit.scss',
 })
 export class Submit {
   registrationForm: FormGroup;
-  trackingId: string = '';
+  trackingId: string = '9491477e-b6c6-45c1-b8f0-9a44667c1128';
   isProcessing = signal(false);
   selectedFiles: File[] = [];
-  requestId = '';
+  registrationId = '';
+  trackedRegistration: any;
+  selectedTabIndex = 0;
+
   constructor(
     private fb: FormBuilder,
-     private snackBar: MatSnackBar,
-     private clipboard: Clipboard,
-     private onBoardingService: OnBoardingService
-    ) {
+    private snackBar: MatSnackBar,
+    private clipboard: Clipboard,
+    private onBoardingService: OnBoardingService,
+    private router: Router,
+    private route: ActivatedRoute
+  ) {
     this.registrationForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
       name: ['', Validators.required],
       did: ['']
+    });
+
+    this.route.fragment.subscribe((fragment) => {
+      if (fragment === 'register') {
+        this.selectedTabIndex = 0;
+      } else if (fragment === 'search') {
+        this.selectedTabIndex = 1;
+      }
+    });
+
+    this.route.queryParams.subscribe((params) => {
+      const id = params['id'];
+      if (id) {
+        this.search(id);
+      }
     });
   }
 
@@ -59,16 +84,25 @@ export class Submit {
     }
   }
 
+  removeFile(index: number): void {
+
+    this.selectedFiles.splice(index, 1);
+
+    if (this.selectedFiles.length === 0) {
+      this.snackBar.open('All documents removed', 'Close', { duration: 2000 });
+    }
+  }
+
   submitRegistration(): void {
     if (this.registrationForm.valid) {
       this.isProcessing.set(true);
 
-      this.onBoardingService.submitRequest(
-        this.registrationForm.value as RequestForm,
+      this.onBoardingService.submitRegistration(
+        this.registrationForm.value as RegistrationForm,
         this.selectedFiles
       ).subscribe({
         next: (response) => {
-          this.requestId = response.requestId;
+          this.registrationId = response.id;
           this.isProcessing.set(false);
         },
         error: (err) => {
@@ -80,21 +114,44 @@ export class Submit {
     }
   }
 
-  // --- Application Tracking Logic ---
-  resumeApplication(): void {
+  onSearch(): void {
     if (!this.trackingId) return;
 
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { id: this.trackingId },
+      queryParamsHandling: 'merge',
+      fragment: 'search'
+    });
+
+    this.search(this.trackingId);
+  }
+  private search(id: string): void {
     this.isProcessing.set(true);
-    // Simulate API retrieval
-    setTimeout(() => {
-      console.log('Retrieving ID:', this.trackingId);
-      this.isProcessing.set(false);
-      this.snackBar.open('Application status retrieved', 'Close', { duration: 3000 });
-    }, 200);
+    this.onBoardingService.getRegistration(id).subscribe({
+      next: (registration) => {
+        this.isProcessing.set(false);
+        console.log("Registration", registration);
+        this.trackedRegistration = registration;
+      },
+      error: (error) => {
+        console.error("Error getting registration", error);
+        this.isProcessing.set(false);
+        this.snackBar.open(`Registration request ${this.registrationId} not found`, 'Close', { duration: 5000 });
+      }
+    })
   }
 
-  copyRequestId(): void {
-    this.clipboard.copy(this.requestId);
-    this.snackBar.open('Request ID copied to clipboard', 'Dismiss', { duration: 2000 });
+  copyRegistrationId(): void {
+    this.clipboard.copy(this.registrationId);
+    this.snackBar.open('Registration ID copied to clipboard', 'Dismiss', { duration: 2000 });
+  }
+
+  updateAnchor(index: number): void {
+    const fragment = index === 0 ? 'register' : 'search';
+    this.router.navigate([], {
+      fragment: fragment,
+      queryParamsHandling: 'preserve',
+    });
   }
 }

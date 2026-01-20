@@ -1,0 +1,45 @@
+@if(registration) {
+<div class="detail-container">
+    <header class="detail-header">
+        <h3>Registration Information</h3>
+        <mat-chip-set>
+            <mat-chip [attr.status]="registration.status" disabled>
+                {{ registration.status | uppercase }}
+            </mat-chip>
+        </mat-chip-set>
+    </header>
+
+    <div class="detail-grid">
+        <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Decentralized Identifier (DID)</mat-label>
+            <input matInput [value]="registration.did" readonly #didInput>
+            <button mat-icon-button matSuffix (click)="copyDid()">
+                <mat-icon>content_copy</mat-icon>
+            </button>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+            <mat-label>Registration ID</mat-label>
+            <input matInput [value]="registration.id" readonly>
+            <mat-icon matSuffix>fingerprint</mat-icon>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+            <mat-label>Administrative Email</mat-label>
+            <input matInput [value]="registration.email" readonly>
+            <mat-icon matSuffix>email</mat-icon>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+            <mat-label>Submission Date</mat-label>
+            <input matInput [value]="registration.createdAt | date:'dd/MM/yyyy HH:mm:ss'" readonly>
+            <mat-icon matSuffix>calendar_today</mat-icon>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+            <mat-label>Last Update</mat-label>
+            <input matInput [value]="registration.updatedAt | date:'dd/MM/yyyy HH:mm:ss'" readonly>
+            <mat-icon matSuffix>update</mat-icon>
+        </mat-form-field>
+    </div>
+</div>
+}
