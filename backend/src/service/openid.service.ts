@@ -78,7 +78,7 @@ class OidcService {
             )
             this._setTokenCookie(token, req, res);
 
-            let callbackPath = `/callback?access_token=${token.accessToken}`;
+            let callbackPath = `/callback?access_token=${token.access_token}`;
             if (token.refresh_token) {
                 callbackPath += `&refresh_token=${token.refresh_token}`;
             }
