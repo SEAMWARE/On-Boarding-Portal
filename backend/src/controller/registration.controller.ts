@@ -1,119 +1,72 @@
-import { Request, Response, Router } from "express";
-import { RegistrationStatus } from "../entity/registration.entity";
-import { In } from "typeorm";
+import { Router } from "express";
 import { registrationRepository } from "../repository/registration.repository";
-import { PaginationHeader } from "../headers/pagination.headers";
-import { oidcAuthMiddleware } from "../middleware/auth.middleware";
-import { storageService } from "../service/storage.service";
+import { sendEmail } from "../service/email.service";
+import { getFilesPath, removeFolder, saveFiles, uploadFiles } from "../middleware/storage.middleware";
+import { logger } from "../service/logger";
+import { isDuplicatedKeyError } from "../type/db-errors";
+import { generateDid } from "../service/did.service";
 
 const router = Router()
 
-const authFilter = oidcAuthMiddleware()
-router.get('/registration', authFilter, async (req: Request, res: Response) => {
+router.post('/registrations/submit', uploadFiles('files', { maxCount: 5, allowedTypes: /pdf/ }), async (req, res) => {
+    let filesPath;
+    let { name, email, did } = req.body;
     try {
+        logger.info(`Processing onboarding for: ${name}`);
 
-        const {page, limit, sortBy, order} = PaginationHeader.parsePagination(req);
-        const statusQuery = req.query.status as string;
+        did = did || generateDid();
+        const uploadedFiles = req.files as Express.Multer.File[];
 
-        let where: any = {};
-
-        if (statusQuery) {
-            const statuses = statusQuery.split(',') as RegistrationStatus[];
-            where.status = In(statuses);
+        if (!name || !email) {
+            return res.status(400).json({ error: 'Missing mandatory fields: name or email' });
         }
 
-        const result = await registrationRepository.find({
-            page,
-            limit,
-            where,
-            order: { [sortBy]: order }
+        logger.debug(`Files received: ${uploadedFiles ? uploadedFiles.length : 0}`);
+
+        filesPath = getFilesPath(did);
+        const registration = await registrationRepository.save({ email, did, filesPath });
+
+        if (uploadedFiles && uploadedFiles.length != 0) {
+            filesPath = await saveFiles(did, uploadedFiles)
+        }
+
+        res.status(201).json({
+            id: registration.id,
+            did: registration.did,
+            timestamp: new Date().toISOString()
         });
-
-        res.status(200).json(result);
-
+        sendEmail(email);
     } catch (error) {
-        console.error('Error fetching registrations:', error);
-        res.status(500).json({
-            message: 'Error retrieving registrations',
-            error: error instanceof Error ? error.message : 'Unknown error'
-        });
+        logger.error('Submission Error:', error);
+        if (filesPath) {
+            await removeFolder(filesPath);
+        }
+        if (isDuplicatedKeyError(error)) {
+            res.status(400).json({ error: `DID '${did}' or email '${email}' has been already submitted` })
+            return
+        }
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 });
 
-router.get('/registration/:id', authFilter, async (req: Request, res: Response) => {
+router.get('/registrations/submit/:id', async (req, res) => {
+
+    const id = req.params.id;
     try {
-        const { id } = req.params;
-
         const registration = await registrationRepository.findById(id);
-
         if (!registration) {
-            return res.status(404).json({
-                message: `Registration with ID ${id} not found`
+            res.status(404).json({
+                message: `Registration '${id}' does not found`
             });
+            return
         }
-
-        res.status(200).json(registration);
-
+        const { filesPath, ...response } = registration;
+        res.json(response);
     } catch (error) {
-        console.error('Error fetching registration:', error);
-        res.status(500).json({
-            message: 'Error retrieving the registration record',
-            error: error instanceof Error ? error.message : 'Unknown error'
-        });
+        logger.error(`Error getting registration '${id}'`, error)
+        res.status(500).json({ error: 'Internal Server Error' });
     }
-});
 
-router.get('/registration/:id/files', authFilter, async (req: Request, res: Response) => {
-    try {
-        const { id } = req.params;
-
-        const registration = await registrationRepository.findById(id);
-
-        if (!registration) {
-            return res.status(404).json({ message: 'Registration not found' });
-        }
-
-        if (!registration.filesPath) {
-            return res.status(200).json([]);
-        }
-
-        const files = await storageService.listFiles(registration.filesPath);
-
-        res.status(200).json(files);
-
-    } catch (error) {
-        console.error('Error in getFiles endpoint:', error);
-        res.status(500).json({ message: 'Error listing files' });
-    }
-});
-
-router.get('/registration/:id/files/:filename', authFilter, async (req: Request, res: Response) => {
-    try {
-        const { id, filename} = req.params;
-
-        const registration = await registrationRepository.findById(id);
-        if (!registration || !registration.filesPath) {
-            return res.status(404).json({ message: 'Registration or file path not found' });
-        }
-
-        const absolutePath = await storageService.getFilePath(registration.filesPath, filename as string);
-
-        if (!absolutePath) {
-            return res.status(404).json({ message: 'File not found on disk' });
-        }
-        res.sendFile(absolutePath, (err) => {
-            if (err) {
-                console.error('Error sending file:', err);
-                if (!res.headersSent) {
-                    res.status(500).send('Error downloading file');
-                }
-            }
-        });
-
-    } catch (error) {
-        console.error('Error in download endpoint:', error);
-        res.status(500).json({ message: 'Internal server error' });
-    }
-});
+})
 
 export default router;

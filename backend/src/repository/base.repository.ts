@@ -34,23 +34,24 @@ export abstract class BaseRepository<T extends ObjectLiteral> {
         return result.affected !== 0;
     }
 
-    async find(options: PaginationOptions<T>): Promise<PaginatedResult<T>> {
-        const { page = 1, limit = 10, where, order } = options;
-        const skip = (page - 1) * limit;
+async find(options: PaginationOptions<T>): Promise<PaginatedResult<T>> {
+    const { page = 0, limit = 10, where, order } = options;
 
-        const [items, total] = await this.repository.findAndCount({
-            where,
-            order,
-            take: limit,
-            skip: skip
-        } as FindManyOptions<T>);
+    const skip = page * limit;
 
-        return {
-            items,
-            total,
-            page,
-            limit,
-            totalPages: Math.ceil(total / limit)
-        };
-    }
+    const [items, total] = await this.repository.findAndCount({
+        where,
+        order,
+        take: limit,
+        skip: skip
+    } as FindManyOptions<T>);
+
+    return {
+        items,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+    };
+}
 }
