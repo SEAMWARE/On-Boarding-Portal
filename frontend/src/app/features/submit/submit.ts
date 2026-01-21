@@ -10,13 +10,18 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTabsModule } from '@angular/material/tabs';
 import { Clipboard } from '@angular/cdk/clipboard';
-import { MatToolbarModule } from '@angular/material/toolbar';
 import { OnBoardingService, RegistrationForm } from '../../core/services/onboarding.service';
 import { RegistrationDetails } from '../../core/components/registration-details/registration-details';
 import { ActivatedRoute, Router } from '@angular/router';
 import { UploadFile } from "../../core/components/upload-file/upload-file";
 import { NotificationService } from '../../core/services/notification';
 import { CopyInput } from '../../core/components/copy-input/copy-input';
+import { Toolbar } from '../../core/components/toolbar/toolbar';
+
+const ANCHOR_SECTIONS: string[] = [
+  'register',
+  'search'
+];
 
 @Component({
   selector: 'app-submit',
@@ -32,11 +37,11 @@ import { CopyInput } from '../../core/components/copy-input/copy-input';
     MatIconModule,
     MatProgressBarModule,
     MatSnackBarModule,
-    MatToolbarModule,
+    Toolbar,
     RegistrationDetails,
     UploadFile,
     CopyInput
-],
+  ],
   templateUrl: './submit.html',
   styleUrl: './submit.scss',
 })
@@ -64,11 +69,7 @@ export class Submit {
     });
 
     this.route.fragment.subscribe((fragment) => {
-      if (fragment === 'register') {
-        this.selectedTabIndex = 0;
-      } else if (fragment === 'search') {
-        this.selectedTabIndex = 1;
-      }
+      this.selectedTabIndex = (fragment ? ANCHOR_SECTIONS.indexOf(fragment) : 0) || 0
     });
 
     this.route.queryParams.subscribe((params) => {
@@ -143,7 +144,8 @@ export class Submit {
   }
 
   updateAnchor(index: number): void {
-    const fragment = index === 0 ? 'register' : 'search';
+    const fragment = ANCHOR_SECTIONS[index];
+
     this.router.navigate([], {
       fragment: fragment,
       queryParamsHandling: 'preserve',

@@ -1,0 +1,24 @@
+<mat-toolbar color="primary" class="main-header mat-elevation-z4">
+    <div class="header-container">
+        <div class="brand" (click)="goLading()">
+            <mat-icon>security</mat-icon>
+            <span>Onboarding Portal</span>
+        </div>
+        <span class="spacer"></span>
+        @if(showAdminLogin || showOnBoarding) {
+        <div>
+            @if(showAdminLogin) {
+            <button mat-button class="nav-link" (click)="onAdminLogin()">
+                <mat-icon>lock_open</mat-icon>
+                ADMIN LOGIN
+            </button>
+            }
+            @if(showOnBoarding) {
+            <button mat-flat-button color="accent" class="cta-small" (click)="onSubmit()">
+                START ONBOARDING PROCESS
+            </button>
+            }
+        </div>
+        }
+    </div>
+</mat-toolbar>

@@ -41,3 +41,7 @@ body {
   --mat-snack-bar-button-color: eff6ff;
   box-shadow: 0px 3px 5px rgba(0, 0, 0, 0.2);
 }
+:root {
+  --app-navy-gradient: linear-gradient(35deg, var(--mat-sys-primary) 0%, var(--mat-sys-on-primary-fixed) 100%);
+  --app-container-width: 1100px;
+}

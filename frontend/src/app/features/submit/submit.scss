@@ -1,34 +1,10 @@
-$navy-gradient: linear-gradient(135deg, var(--mat-sys-on-primary-fixed) 0%, #3f51b5 100%);
-$container-width: 1100px;
-
-.main-header {
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-
-  .header-container {
-    display: flex;
-    align-items: center;
-    width: 100%;
-    max-width: $container-width;
-    margin: 0 auto;
-  }
-
-  .brand {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-weight: 700;
-    color: var(--mat-sys-on-primary-fixed);
-  }
-}
 
 .page-container {
   display: flex;
   flex-direction: column;
   height: 100vh;
   width: 100vw;
-  background: $navy-gradient;
+  background: var(--app-navy-gradient);
 }
 
 .onboarding-wrapper {

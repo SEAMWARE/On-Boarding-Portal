@@ -4,9 +4,9 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
-import { AuthService } from '../../core/services/auth';
 import { Router } from '@angular/router';
 import { MatDividerModule } from '@angular/material/divider';
+import { Toolbar } from "../../core/components/toolbar/toolbar";
 
 @Component({
   selector: 'app-landing',
@@ -17,22 +17,18 @@ import { MatDividerModule } from '@angular/material/divider';
     MatToolbarModule,
     MatIconModule,
     MatCardModule,
-    MatDividerModule
-  ],
+    MatDividerModule,
+    Toolbar
+],
   templateUrl: './landing.html',
   styleUrls: ['./landing.scss']
 })
 export class Landing {
 
   constructor(
-    private readonly authService: AuthService,
     private readonly router: Router
-  ) {}
+  ) { }
 
-  onAdminLogin() {
-
-      this.authService.login();
-  }
 
   onSubmit(): void {
     this.router.navigate(['/submit']);
