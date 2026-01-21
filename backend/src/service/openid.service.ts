@@ -44,20 +44,32 @@ class OidcService {
     }
 
     async refresh(req: Request, res: Response) {
-        const { refreshToken } = req.body;
+        const refreshToken = req.body.refresh_token || req.cookies?.refresh_token;
+
         if (!refreshToken) {
-            return res.status(400).json({ error: 'Refresh token is required' });
+            return res.status(401).json({ error: 'Refresh token missing' });
         }
 
-        const issuer = await this.getIssuer();
+        try {
+            const issuer = await oidcService.getIssuer();
 
-        const newToken = await client.refreshTokenGrant(issuer,refreshToken);
-        this._setTokenCookie(newToken, req, res);
-        res.json({
-            access_token: newToken.access_token,
-            refresh_token: newToken.refresh_token,
-            expires_in: newToken.expires_in
-        });
+            const tokens: client.TokenEndpointResponse = await client.refreshTokenGrant(
+                issuer,
+                refreshToken
+            );
+
+            oidcService._setTokenCookie(tokens, req, res);
+
+            return res.json({
+                access_token: tokens.access_token,
+                refresh_token: tokens.refresh_token,
+                expires_in: tokens.expires_in
+            });
+
+        } catch (err) {
+            logger.error('Error refreshing token', err);
+            return res.status(403).json({ error: 'Invalid refresh token' });
+        }
     }
 
     async callback(req: Request, res: Response) {

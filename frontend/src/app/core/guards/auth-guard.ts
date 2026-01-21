@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { CanActivate, Router, UrlTree } from '@angular/router';
 import { AuthService } from '../services/auth';
-import { Observable } from 'rxjs';
+import { catchError, map, Observable, of } from 'rxjs';
 
 
 @Injectable({
@@ -13,10 +13,19 @@ export class AuthGuard implements CanActivate {
 
   canActivate(): boolean | UrlTree | Observable<boolean | UrlTree> | Promise<boolean | UrlTree> {
     if (this.auth.isLoggedIn) {
-      return true;
-    } else {
-      console.log("User is not logged")
-      return this.router.navigate(['/login']);
+      return of(true);
     }
+    if (!this.auth.refreshToken) {
+      return this.router.navigate(['/'])
+    }
+
+    return this.auth.refreshToken().pipe(
+      map((res) => true),
+      catchError((error) => {
+        console.log("Error refreshing token", error)
+        return this.router.navigate(['/'])
+      })
+    )
+
   }
 }
