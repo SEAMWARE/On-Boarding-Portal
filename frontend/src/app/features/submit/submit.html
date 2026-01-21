@@ -69,18 +69,9 @@
                                 the onboarding status.
                             </p>
 
-                            <div class="registration-id-display">
-                                <mat-form-field appearance="fill" class="id-input-field">
-                                    <mat-label>Registration ID</mat-label>
-                                    <input matInput [value]="registrationId" readonly #idInput>
-                                    <button mat-icon-button matSuffix (click)="copyRegistrationId()"
-                                        matTooltip="Copy to clipboard">
-                                        <mat-icon>content_copy</mat-icon>
-                                    </button>
-                                    <mat-hint>Use this ID to track your application status in the "Track Progress"
-                                        tab.</mat-hint>
-                                </mat-form-field>
-                            </div>
+                            <app-copy-input class="id-input-field" [value]="registrationId" label="Registration ID"
+                                hint="Use this ID to track your application status in the 'Track Progress' tab.">
+                            </app-copy-input>
                         </div>
                         }
                     </div>

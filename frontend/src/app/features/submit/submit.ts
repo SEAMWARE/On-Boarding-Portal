@@ -16,6 +16,7 @@ import { RegistrationDetails } from '../../core/components/registration-details/
 import { ActivatedRoute, Router } from '@angular/router';
 import { UploadFile } from "../../core/components/upload-file/upload-file";
 import { NotificationService } from '../../core/services/notification';
+import { CopyInput } from '../../core/components/copy-input/copy-input';
 
 @Component({
   selector: 'app-submit',
@@ -33,14 +34,15 @@ import { NotificationService } from '../../core/services/notification';
     MatSnackBarModule,
     MatToolbarModule,
     RegistrationDetails,
-    UploadFile
+    UploadFile,
+    CopyInput
 ],
   templateUrl: './submit.html',
   styleUrl: './submit.scss',
 })
 export class Submit {
   registrationForm: FormGroup;
-  trackingId: string = '9491477e-b6c6-45c1-b8f0-9a44667c1128';
+  trackingId: string = '';
   isProcessing = signal(false);
   selectedFiles: File[] = [];
   registrationId = '';
@@ -138,11 +140,6 @@ export class Submit {
         this.notification.show(`Registration request ${this.registrationId} not found`);
       }
     })
-  }
-
-  copyRegistrationId(): void {
-    this.clipboard.copy(this.registrationId);
-    this.notification.info('Registration ID copied to clipboard');
   }
 
   updateAnchor(index: number): void {

@@ -1,4 +1,4 @@
-$navy-gradient: linear-gradient(135deg, #1a237e 0%, #3f51b5 100%);
+$navy-gradient: linear-gradient(135deg, var(--mat-sys-on-primary-fixed) 0%, #3f51b5 100%);
 $container-width: 1100px;
 
 .main-header {
@@ -19,7 +19,7 @@ $container-width: 1100px;
     align-items: center;
     gap: 8px;
     font-weight: 700;
-    color: #1a237e;
+    color: var(--mat-sys-on-primary-fixed);
   }
 }
 
@@ -52,7 +52,7 @@ $container-width: 1100px;
 }
 
 .tab-content {
-  padding: 16px 32px;
+  padding: 16px 32px 32px 32px;
   background: white;
   min-height: 500px;
   display: flex;
@@ -61,10 +61,8 @@ $container-width: 1100px;
 
 .section-header {
   margin-bottom: 32px;
-
-  p {
-    color: #666;
-    font-size: 1rem;
+  h2 {
+    color: var(--mat-sys-on-primary-fixed)
   }
 }
 
@@ -126,14 +124,9 @@ $container-width: 1100px;
   align-items: center;
   text-align: center;
   padding: 20px 0;
-}
 
-.registration-id-display {
-  width: 100%;
-  max-width: 450px;
-  margin-bottom: 40px;
-  display: flex;
   .id-input-field {
     flex: 1;
+    min-width: 450px;
   }
 }

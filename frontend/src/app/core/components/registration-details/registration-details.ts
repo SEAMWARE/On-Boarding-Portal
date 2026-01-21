@@ -6,22 +6,25 @@ import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { Registration } from '../../types/registration';
-import { Clipboard } from '@angular/cdk/clipboard';
 import { MatButtonModule } from "@angular/material/button";
+import { CopyInput } from '../copy-input/copy-input';
 
 @Component({
   selector: 'app-registration-details',
-  imports: [CommonModule, MatFormFieldModule, MatInputModule, MatIconModule, MatChipsModule, MatButtonModule],
+  imports: [CommonModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatIconModule,
+    MatChipsModule,
+    MatButtonModule,
+    CopyInput
+  ],
   templateUrl: './registration-details.html',
   styleUrl: './registration-details.scss',
 })
 export class RegistrationDetails {
 
   @Input({ required: true }) registration!: Registration;
-
-  constructor(private clipboard: Clipboard) {
-
-  }
 
   // Helper para mostrar colores según el estado
   getStatusColor(status: RegistrationStatus): string {
@@ -33,9 +36,5 @@ export class RegistrationDetails {
       [RegistrationStatus.ACTIVE]: 'success'
     };
     return colors[status] || 'default';
-  }
-
-  copyDid() {
-    this.clipboard.copy(this.registration.did)
   }
 }

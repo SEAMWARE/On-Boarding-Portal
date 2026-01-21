@@ -10,20 +10,14 @@
     </header>
 
     <div class="detail-grid">
+        <app-copy-input [value]="registration.did" label="Decentralized Identifier (DID)" appearance="outline" class="full-width" />
         <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Decentralized Identifier (DID)</mat-label>
-            <input matInput [value]="registration.did" readonly #didInput>
-            <button mat-icon-button matSuffix (click)="copyDid()">
-                <mat-icon>content_copy</mat-icon>
-            </button>
-        </mat-form-field>
-        <mat-form-field appearance="outline">
             <mat-label>Registration ID</mat-label>
             <input matInput [value]="registration.id" readonly>
             <mat-icon matSuffix>fingerprint</mat-icon>
         </mat-form-field>
 
-        <mat-form-field appearance="outline">
+        <mat-form-field appearance="outline" class="full-width">
             <mat-label>Administrative Email</mat-label>
             <input matInput [value]="registration.email" readonly>
             <mat-icon matSuffix>email</mat-icon>

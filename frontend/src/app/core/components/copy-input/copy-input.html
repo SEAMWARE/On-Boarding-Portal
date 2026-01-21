@@ -1,0 +1,13 @@
+<mat-form-field [appearance]="appearance" class="full-width">
+    <mat-label>{{ label }}</mat-label>
+
+    <input matInput [value]="value" [readonly]="readonly" [disabled]="disabled">
+
+    <button mat-icon-button matSuffix (click)="copy()" [matTooltip]="tooltipText" type="button">
+        <mat-icon>content_copy</mat-icon>
+    </button>
+
+    @if (hint) {
+    <mat-hint>{{ hint }}</mat-hint>
+    }
+</mat-form-field>

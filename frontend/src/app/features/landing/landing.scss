@@ -27,7 +27,7 @@ $container-width: 1100px;
     align-items: center;
     gap: 8px;
     font-weight: 700;
-    color: #1a237e;
+    color: var(--mat-sys-on-primary-fixed);
   }
 }
 
@@ -62,7 +62,7 @@ $container-width: 1100px;
     font-weight: 800;
     line-height: 1.1;
     margin: 24px 0;
-    color: #1a237e;
+    color: var(--mat-sys-on-primary-fixed);
   }
 
   .subtitle {
