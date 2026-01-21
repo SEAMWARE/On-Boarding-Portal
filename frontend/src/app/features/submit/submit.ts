@@ -3,19 +3,19 @@ import { Component, signal } from '@angular/core';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
-import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTabsModule } from '@angular/material/tabs';
 import { Clipboard } from '@angular/cdk/clipboard';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { OnBoardingService, RegistrationForm } from '../../core/services/onboarding.service';
 import { RegistrationDetails } from '../../core/components/registration-details/registration-details';
 import { ActivatedRoute, Router } from '@angular/router';
-import { MatChipsModule } from '@angular/material/chips';
+import { UploadFile } from "../../core/components/upload-file/upload-file";
+import { NotificationService } from '../../core/services/notification';
 
 @Component({
   selector: 'app-submit',
@@ -30,12 +30,11 @@ import { MatChipsModule } from '@angular/material/chips';
     MatCardModule,
     MatIconModule,
     MatProgressBarModule,
-    MatDividerModule,
     MatSnackBarModule,
     MatToolbarModule,
     RegistrationDetails,
-    MatChipsModule
-  ],
+    UploadFile
+],
   templateUrl: './submit.html',
   styleUrl: './submit.scss',
 })
@@ -50,7 +49,7 @@ export class Submit {
 
   constructor(
     private fb: FormBuilder,
-    private snackBar: MatSnackBar,
+    private notification: NotificationService,
     private clipboard: Clipboard,
     private onBoardingService: OnBoardingService,
     private router: Router,
@@ -78,10 +77,9 @@ export class Submit {
     });
   }
 
-  onFileSelected(event: any): void {
-    if (event.target.files) {
-      this.selectedFiles = Array.from(event.target.files);
-    }
+  onFileSelected(event: File[]): void {
+    this.selectedFiles = event;
+    console.debug("files", event)
   }
 
   removeFile(index: number): void {
@@ -89,7 +87,7 @@ export class Submit {
     this.selectedFiles.splice(index, 1);
 
     if (this.selectedFiles.length === 0) {
-      this.snackBar.open('All documents removed', 'Close', { duration: 2000 });
+      this.notification.info('All documents removed', { duration: 2000 });
     }
   }
 
@@ -107,7 +105,7 @@ export class Submit {
         },
         error: (err) => {
           this.isProcessing.set(false);
-          this.snackBar.open('Error submitting the application', 'Close', { duration: 5000 });
+          this.notification.error('Error submitting the application');
           console.error('Submission Error:', err);
         }
       });
@@ -131,20 +129,20 @@ export class Submit {
     this.onBoardingService.getRegistration(id).subscribe({
       next: (registration) => {
         this.isProcessing.set(false);
-        console.log("Registration", registration);
+        console.debug("Registration", registration);
         this.trackedRegistration = registration;
       },
       error: (error) => {
         console.error("Error getting registration", error);
         this.isProcessing.set(false);
-        this.snackBar.open(`Registration request ${this.registrationId} not found`, 'Close', { duration: 5000 });
+        this.notification.show(`Registration request ${this.registrationId} not found`);
       }
     })
   }
 
   copyRegistrationId(): void {
     this.clipboard.copy(this.registrationId);
-    this.snackBar.open('Registration ID copied to clipboard', 'Dismiss', { duration: 2000 });
+    this.notification.info('Registration ID copied to clipboard');
   }
 
   updateAnchor(index: number): void {

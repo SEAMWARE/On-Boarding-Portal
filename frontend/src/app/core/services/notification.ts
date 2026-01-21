@@ -1,7 +1,7 @@
 import { Injectable } from "@angular/core";
 import { MatSnackBar, MatSnackBarConfig } from '@angular/material/snack-bar';
 
-export type NotificationType = 'success' | 'error' | 'warning' | 'info';
+export type NotificationType = 'success' | 'error' | 'warning' | 'info' | 'raw';
 
 @Injectable({
   providedIn: 'root',
@@ -19,7 +19,7 @@ export class NotificationService {
   }
   show(
     message: string,
-    type: NotificationType = 'info',
+    type: NotificationType = 'raw',
     config?: MatSnackBarConfig
   ): void {
     const mergedConfig: MatSnackBarConfig = { ...this.getDefaultConfig(type), ...config };
@@ -34,7 +34,7 @@ export class NotificationService {
     this.show(message, 'error', config);
   }
 
-  warning(message: string, config?: MatSnackBarConfig): void {
+  warn(message: string, config?: MatSnackBarConfig): void {
     this.show(message, 'warning', config);
   }
 

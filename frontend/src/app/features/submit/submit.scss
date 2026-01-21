@@ -51,11 +51,6 @@ $container-width: 1100px;
   box-sizing: border-box;
 }
 
-
-::ng-deep .mat-mdc-tab-header {
-  border-bottom: 1px solid #e0e0e0;
-}
-
 .tab-content {
   padding: 16px 32px;
   background: white;
@@ -79,47 +74,12 @@ $container-width: 1100px;
   gap: 20px;
 }
 
-.upload-zone {
-  margin-top: 1rem;
-  padding: 20px;
-  border: 2px dashed #ccc;
-  border-radius: 8px;
-  text-align: center;
-  background: #fafafa;
-  display: flex;
-  flex-direction: column;
-  button {
-    max-width: 300px;
-    align-self: center;
-  }
-  .file-previews {
-    margin-top: 16px;
-    align-self: center;
-  }
-
-  mat-icon[matChipAvatar] {
-    font-size: 18px;
-    height: 18px;
-    width: 18px;
-    color: #ad1457;
-  }
-}
-
-
 .actions-footer {
   margin-top: auto;
   padding-top: 32px;
   display: flex;
   flex-direction: column;
   gap: 16px;
-
-  button {
-    align-self: flex-end;
-    padding: 0 48px;
-    height: 54px;
-    font-weight: 600;
-    border-radius: 12px;
-  }
 }
 
 .status-lookup-wrapper {
@@ -172,20 +132,8 @@ $container-width: 1100px;
   width: 100%;
   max-width: 450px;
   margin-bottom: 40px;
-
+  display: flex;
   .id-input-field {
-    width: 100%;
-
-
-    input {
-      font-family: 'Roboto Mono', monospace;
-      font-weight: 600;
-      color: #1a237e;
-      letter-spacing: 1px;
-    }
+    flex: 1;
   }
-}
-
-.success-actions {
-  margin-top: 20px;
 }

@@ -1,0 +1,27 @@
+<div class="upload-container">
+    <p class="upload-label">{{ label }}</p>
+
+    <button type="button" mat-stroked-button color="primary" (click)="fileInput.click()">
+        <mat-icon>upload_file</mat-icon>
+        {{ selectedFiles.length > 0 ? 'ADD MORE' : 'SELECT' }}
+    </button>
+
+    <input #fileInput type="file" [accept]="accept" [multiple]="multiple" (change)="onFileSelected($event)" hidden>
+
+    @if(selectedFiles.length > 0) {
+    <mat-chip-set class="chip-list">
+        @for(file of selectedFiles; track $index) {
+        <mat-chip-row (removed)="removeFile($index)" class="preview-chip" (click)="previewFile(file)"
+            matTooltip="Click to preview PDF" [matTooltipShowDelay]="500" #chipTooltip="matTooltip"> <mat-icon
+                matChipAvatar>picture_as_pdf</mat-icon>
+            <span class="truncate">{{ file.name }}</span>
+
+            <button matChipRemove matTooltip="Click to remove" [matTooltipShowDelay]="500"
+                (mouseenter)="chipTooltip.disabled = true" (mouseleave)="chipTooltip.disabled = false">
+                <mat-icon>cancel</mat-icon>
+            </button>
+        </mat-chip-row>
+        }
+    </mat-chip-set>
+    }
+</div>

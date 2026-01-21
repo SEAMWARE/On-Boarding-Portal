@@ -46,30 +46,8 @@
                                 <mat-hint>Leaving this field empty will trigger automated DID generation.</mat-hint>
                             </mat-form-field>
 
-                            <div class="upload-zone">
-                                <p>Legal Evidence & Proof of Identity (PDF only)</p>
-
-                                <button type="button" mat-stroked-button color="primary" (click)="fileInput.click()">
-                                    <mat-icon>upload_file</mat-icon> SELECT DOCUMENTS
-                                </button>
-
-                                <input #fileInput type="file" (change)="onFileSelected($event)" hidden multiple
-                                    accept="application/pdf">
-
-                                @if(selectedFiles.length > 0) {
-                                <mat-chip-set class="file-previews">
-                                    @for(file of selectedFiles; track $index) {
-                                    <mat-chip-row (removed)="removeFile($index)">
-                                        <mat-icon matChipAvatar>picture_as_pdf</mat-icon>
-                                        {{ file.name }}
-                                        <button matChipRemove aria-label="Remove file">
-                                            <mat-icon>cancel</mat-icon>
-                                        </button>
-                                    </mat-chip-row>
-                                    }
-                                </mat-chip-set>
-                                }
-                            </div>
+                            <app-upload-file label="Legal Evidence & Proof of Identity" accept="application/pdf"
+                                [maxFileSizeMB]="5" [multiple]="true" (filesChanged)="onFileSelected($event)" />
                         </form>
 
                         <div class="actions-footer">
@@ -139,7 +117,6 @@
                         </div>
                     </div>
                 </mat-tab>
-
             </mat-tab-group>
         </mat-card>
     </div>

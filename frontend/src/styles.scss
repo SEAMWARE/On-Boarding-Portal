@@ -22,22 +22,22 @@ body {
 
 
 .snackbar-error {
-  --mat-snack-bar-container-color: #f44336;
-  --mat-snack-bar-button-color: white;
+  --mat-snack-bar-container-color: #8e1d27;
+  --mat-snack-bar-button-color: #fef2f2;
   box-shadow: 0px 3px 5px rgba(0, 0, 0, 0.2);
 }
 .snackbar-success {
-  --mat-snack-bar-container-color: #4caf50;
-  --mat-snack-bar-button-color: white;
+  --mat-snack-bar-container-color: #006435;
+  --mat-snack-bar-button-color: f0fdf4;
   box-shadow: 0px 3px 5px rgba(0, 0, 0, 0.2);
 }
 .snackbar-warning {
-  --mat-snack-bar-container-color: #ff9800;
-  --mat-snack-bar-button-color: white;
+  --mat-snack-bar-container-color: #ce8a00;
+  --mat-snack-bar-button-color: #fffbeb;
   box-shadow: 0px 3px 5px rgba(0, 0, 0, 0.2);
 }
 .snackbar-info {
-  --mat-snack-bar-container-color: #2196f3;
-  --mat-snack-bar-button-color: white;
+  --mat-snack-bar-container-color: #2231b3;
+  --mat-snack-bar-button-color: eff6ff;
   box-shadow: 0px 3px 5px rgba(0, 0, 0, 0.2);
 }

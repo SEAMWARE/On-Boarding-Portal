@@ -1,0 +1,31 @@
+.upload-container {
+    border: 2px dashed #e0e0e0;
+    border-radius: 8px;
+    padding: 24px;
+    text-align: center;
+    background-color: #fafafa;
+    transition: border-color 0.3s ease;
+
+    .chip-list {
+        margin-top: 16px;
+        display: flex;
+        justify-content: center;
+    }
+
+    .static-chip {
+        cursor: pointer !important;
+        transition: transform 0.2s ease;
+
+        &:hover {
+            transform: translateY(-2px);
+        }
+    }
+
+    .truncate {
+        max-width: 200px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        user-select: none;
+    }
+}
