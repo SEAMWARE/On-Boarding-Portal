@@ -4,10 +4,18 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { AuthService } from '../../services/auth';
 import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatDividerModule } from '@angular/material/divider';
 
 @Component({
   selector: 'app-toolbar',
-  imports: [MatToolbarModule, MatIconModule, MatButtonModule, MatIconModule],
+  imports: [MatToolbarModule,
+    MatIconModule,
+    MatButtonModule,
+    MatIconModule,
+    MatMenuModule,
+    MatDividerModule
+  ],
   templateUrl: './toolbar.html',
   styleUrl: './toolbar.scss',
 })
@@ -15,6 +23,7 @@ export class Toolbar {
 
   @Input() showAdminLogin = true;
   @Input() showOnBoarding = true;
+  @Input() showUserMenu = true;
 
   constructor(
     private readonly authService: AuthService,
@@ -30,7 +39,12 @@ export class Toolbar {
     this.router.navigate(['/submit']);
   }
 
-  goLading(): void {
+  goLanding(): void {
     this.router.navigate(['/'])
+  }
+
+  onLogout(): void {
+    this.authService.logout()
+    this.goLanding();
   }
 }

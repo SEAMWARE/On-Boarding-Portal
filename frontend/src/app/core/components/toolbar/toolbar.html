@@ -1,11 +1,11 @@
 <mat-toolbar color="primary" class="main-header mat-elevation-z4">
     <div class="header-container">
-        <div class="brand" (click)="goLading()">
+        <div class="brand" (click)="goLanding()">
             <mat-icon>security</mat-icon>
             <span>Onboarding Portal</span>
         </div>
         <span class="spacer"></span>
-        @if(showAdminLogin || showOnBoarding) {
+        @if(showAdminLogin || showOnBoarding || showUserMenu) {
         <div>
             @if(showAdminLogin) {
             <button mat-button class="nav-link" (click)="onAdminLogin()">
@@ -17,6 +17,15 @@
             <button mat-flat-button color="accent" class="cta-small" (click)="onSubmit()">
                 START ONBOARDING PROCESS
             </button>
+            }
+            @if(showUserMenu) {
+            <button matButton="text" [matMenuTriggerFor]="menu">
+                <mat-icon>person</mat-icon>
+                test
+            </button>
+            <mat-menu #menu="matMenu">
+                <button (click)="onLogout()" mat-menu-item>Logout</button>
+            </mat-menu>
             }
         </div>
         }
