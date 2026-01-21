@@ -9,6 +9,7 @@ import { initializeDatabase } from './service/data.source';
 
 import oidcController from './controller/openid.controller';
 import submitController from './controller/submit.controller';
+import registrationController from './controller/registration.controller';
 
 import cookieParser from 'cookie-parser';
 
@@ -34,7 +35,7 @@ appServer.get('/', (_req, res) => {
 });
 
 // login
-appServer.use('/api', oidcController, submitController)
+appServer.use('/api', oidcController, submitController, registrationController)
 
 appServer.use((_req, res) => {
   ejs.renderFile(indexPath, { ...app }, (err, str) => {
