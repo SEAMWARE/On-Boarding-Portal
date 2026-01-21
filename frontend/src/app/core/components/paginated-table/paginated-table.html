@@ -1,0 +1,97 @@
+<div class="table-container">
+
+  @if (isLoading()) {
+    <div class="loading-shade">
+      <mat-spinner diameter="40"></mat-spinner>
+    </div>
+  }
+
+  @if (filtersConfig && filtersConfig.length > 0) {
+    <section class="filters-section">
+      <form [formGroup]="filterForm" class="filters-grid">
+        @for (filter of filtersConfig; track filter.key) {
+          <mat-form-field appearance="outline">
+            <mat-label>{{ filter.label }}</mat-label>
+
+            @if (filter.type !== 'enum') {
+              <mat-icon matPrefix>search</mat-icon>
+            }
+
+            @switch (filter.type) {
+              @case ('enum') {
+                <mat-select [formControlName]="filter.key" [multiple]="filter.multiple">
+                  @for (opt of filter.options; track opt.value) {
+                    <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+                  }
+                </mat-select>
+              }
+              @case ('number') {
+                <input matInput type="number" [formControlName]="filter.key">
+              }
+              @default {
+                <input matInput type="text" [formControlName]="filter.key" placeholder="Search...">
+              }
+            }
+          </mat-form-field>
+        }
+
+        <div class="filter-actions">
+          <button mat-button color="warn" (click)="filterForm.reset()" type="button">
+            <mat-icon>filter_alt_off</mat-icon>
+            Clear Filters
+          </button>
+        </div>
+      </form>
+    </section>
+  }
+
+  <div class="table-responsive">
+    <table mat-table [dataSource]="dataSource" class="custom-styled-table">
+      @for (col of columnsConfig; track col.key) {
+        <ng-container [matColumnDef]="col.key">
+          <th mat-header-cell *matHeaderCellDef> {{ col.label }} </th>
+          <td mat-cell *matCellDef="let row">
+            @switch (col.type) {
+              @case ('date') {
+                {{ row[col.key] | date: (col.dateFormat || 'mediumDate') }}
+              }
+              @case ('text') {
+                @if (col.uppercase) {
+                  {{ row[col.key] | uppercase }}
+                } @else {
+                  {{ row[col.key] }}
+                }
+              }
+              @default {
+                {{ row[col.key] }}
+              }
+            }
+          </td>
+        </ng-container>
+      }
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+
+      <tr mat-row
+          *matRowDef="let row; columns: displayedColumns;"
+          (click)="onRowClicked(row)"
+          class="clickable-row"
+          tabindex="0">
+      </tr>
+
+      <tr class="mat-row" *matNoDataRow>
+        <td class="mat-cell" [attr.colspan]="displayedColumns.length" style="text-align: center; padding: 2rem;">
+          {{ emptyMessage }}
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <mat-paginator
+    [length]="totalItems"
+    [pageSize]="pageSize"
+    [pageSizeOptions]="pageSizeOptions"
+    (page)="onPageChange($event)"
+    showFirstLastButtons>
+  </mat-paginator>
+</div>

@@ -1,0 +1,101 @@
+@use '@angular/material' as mat;
+
+:host {
+  display: block;
+}
+
+.table-container {
+  position: relative;
+  max-width: var(--table-max-width, 1200px);
+  margin: 2rem auto;
+  border-radius: var(--mat-sys-corner-medium, 12px);
+  overflow: hidden;
+  box-shadow: var(--mat-sys-level1);
+}
+
+/* --- Loading Shade --- */
+.loading-shade {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background: color-mix(in srgb, var(--mat-sys-surface) 60%, transparent);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(2px);
+}
+
+/* --- Filters Section --- */
+.filters-section {
+  padding: 1.5rem 1.5rem 0.5rem 1.5rem;
+  background-color: var(--mat-sys-surface-container-low);
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+}
+
+.filters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1rem;
+  align-items: center;
+
+  .filter-actions {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    height: 100%;
+    margin-bottom: 22px;
+  }
+}
+
+/* --- Table Styling --- */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  background-color: var(--mat-sys-surface);
+}
+
+.custom-styled-table {
+  width: 100%;
+  background: transparent;
+
+  th.mat-header-cell {
+    background-color: var(--mat-sys-surface-container-low);
+    color: var(--mat-sys-on-surface);
+    font-weight: 600;
+    white-space: nowrap;
+    padding: 0 16px;
+  }
+
+  td.mat-cell {
+    padding: 0 16px;
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+.clickable-row {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background-color: color-mix(in srgb, var(--mat-sys-primary) 8%, transparent) !important;
+  }
+
+  &:focus, &:active {
+    outline: none;
+    background-color: color-mix(in srgb, var(--mat-sys-primary) 12%, transparent) !important;
+  }
+}
+
+/* --- Paginator --- */
+mat-paginator {
+  background-color: var(--mat-sys-surface-container-low);
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
+/* Utility to ensure form fields take full width of the grid cell */
+mat-form-field {
+  width: 100%;
+}

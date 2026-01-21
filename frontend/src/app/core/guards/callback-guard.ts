@@ -17,14 +17,14 @@ export class CallbackResolver implements Resolve<any> {
 
     const accessToken = route.queryParamMap.get('access_token')
     if (!accessToken) {
-      this.router.navigate(['/login']);
+      this.router.navigate(['/']);
       return null;
     }
 
     const logged = this.auth.handleCallback(accessToken);
 
     if (logged) {
-      this.router.navigate(['/']);
+      this.router.navigate(['/admin']);
     } else {
       this.router.navigate(['/login']);
     }

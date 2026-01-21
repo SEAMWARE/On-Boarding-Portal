@@ -7,7 +7,7 @@ import { ServerConfigService } from './server-config';
 export class AuthService {
 
   token?: string;
-  vc: any = {}
+  user: any = {}
 
   get isLoggedIn(): boolean {
     return !!this.token && !this.isExpired
@@ -17,14 +17,14 @@ export class AuthService {
     this.token = token
     if (token) {
       try {
-        this.vc = JSON.parse(atob(token.split(".")[1]))
+        this.user = JSON.parse(atob(token.split(".")[1]))
       } catch(err) {
         console.error("Error decoding token", err);
-        this.vc = {}
+        this.user = {}
         this.token = undefined;
       }
     } else {
-      this.vc = {}
+      this.user = {}
     }
   }
   get accessToken(): string | undefined {
@@ -32,10 +32,10 @@ export class AuthService {
   }
 
   get isExpired(): boolean {
-    if (!this.vc || !this.vc.exp) {
+    if (!this.user || !this.user.exp) {
       return false
     }
-    return (Date.now() / 1000) > this.vc.exp;
+    return (Date.now() / 1000) > this.user.exp;
   }
 
   constructor(private readonly configSvc: ServerConfigService) {
@@ -62,7 +62,7 @@ export class AuthService {
     if (!this.token || this.isExpired) {
       return undefined
     }
-    return this.vc;
+    return this.user;
   }
 
   hasRole(role: string): boolean {

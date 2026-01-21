@@ -1,7 +1,9 @@
-import { HttpClient, HttpHeaders } from "@angular/common/http";
+import { HttpClient, HttpHeaders, HttpParams } from "@angular/common/http";
 import { ServerConfigService } from "./server-config";
 import { Observable } from "rxjs";
 import { Injectable } from "@angular/core";
+import { PaginatedResponse, PaginationQuery } from "../types/pagination";
+import { Registration } from "../types/registration";
 
 export interface RegistrationForm {
     email: string;
@@ -15,7 +17,9 @@ export interface RegistrationForm {
 export class OnBoardingService {
 
     baseUrl: string;
-    submitPath = '/api/submit'
+    submitPath = '/api/registrations/submit'
+    registrations = '/api/admin/registrations'
+
     constructor(
         private readonly http: HttpClient,
         config: ServerConfigService
@@ -53,6 +57,29 @@ export class OnBoardingService {
         const headers = this._getHeaders();
 
         return this.http.get<any>(url, { headers });
+    }
+
+    getAdminRegistrations(
+        pagination: PaginationQuery & { status?: string | string[] } = { page: 0, limit: 10 }
+    ): Observable<PaginatedResponse<Registration>> {
+
+        const url = this._resolveUrl(this.registrations);
+
+        let params = new HttpParams()
+            .set('page', pagination.page.toString())
+            .set('limit', pagination.limit.toString())
+            .set('sortBy', 'createdAt')
+            .set('order', 'DESC');
+
+        if (pagination.status) {
+            const statusValue = Array.isArray(pagination.status)
+                ? pagination.status.join(',')
+                : pagination.status;
+
+            params = params.set('status', statusValue);
+        }
+
+        return this.http.get<PaginatedResponse<Registration>>(url, { params });
     }
 
     _getHeaders(): HttpHeaders {
