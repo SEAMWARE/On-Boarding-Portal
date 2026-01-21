@@ -47,7 +47,7 @@ export class PaginatedTable<T> implements OnInit {
   dataSource = new MatTableDataSource<T>([]);
 
   totalItems = 0;
-  pageSize = 10;
+  pageSize = this.pageSizeOptions[0];
   currentPage = 0;
   isLoading = signal(false);
   filterForm = new FormGroup({});

@@ -8,22 +8,32 @@
         @if(showAdminLogin || showOnBoarding || showUserMenu) {
         <div>
             @if(showAdminLogin) {
+            @if(isLogged()) {
+            <button mat-button class="nav-link" (click)="goAdminDashboard()">
+                <mat-icon>dashboard</mat-icon>
+                GO DASHBOARD
+            </button>
+            }@else {
             <button mat-button class="nav-link" (click)="onAdminLogin()">
                 <mat-icon>lock_open</mat-icon>
                 ADMIN LOGIN
             </button>
+            }
             }
             @if(showOnBoarding) {
             <button mat-flat-button color="accent" class="cta-small" (click)="onSubmit()">
                 START ONBOARDING PROCESS
             </button>
             }
-            @if(showUserMenu) {
+            @if(showUserMenu && user) {
             <button matButton="text" [matMenuTriggerFor]="menu">
                 <mat-icon>person</mat-icon>
-                test
+                {{ user.given_name }} {{ user.family_name }}
             </button>
             <mat-menu #menu="matMenu">
+                <button mat-menu-item disabled>
+                    <p>{{ user.preferred_username }}</p>
+                </button>
                 <button (click)="onLogout()" mat-menu-item>Logout</button>
             </mat-menu>
             }

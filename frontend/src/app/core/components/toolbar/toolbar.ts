@@ -23,15 +23,21 @@ export class Toolbar {
 
   @Input() showAdminLogin = true;
   @Input() showOnBoarding = true;
-  @Input() showUserMenu = true;
-
+  @Input() showUserMenu = false;
+  user: any;
   constructor(
     private readonly authService: AuthService,
     private readonly router: Router
-  ) { }
+  ) {
+    this.user = this.authService.getUser();
+    console.log(this.user);
+  }
+
+  isLogged() {
+    return this.authService.isLoggedIn;
+  }
 
   onAdminLogin() {
-
     this.authService.login();
   }
 
@@ -39,6 +45,9 @@ export class Toolbar {
     this.router.navigate(['/submit']);
   }
 
+  goAdminDashboard() {
+    this.router.navigate(['/admin'])
+  }
   goLanding(): void {
     this.router.navigate(['/'])
   }
