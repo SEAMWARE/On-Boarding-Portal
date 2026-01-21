@@ -9,7 +9,7 @@ import { sendEmail } from "../service/email.service";
 const router = Router();
 
 router.post('/submit', uploadFiles('files', { maxCount: 5, allowedTypes: /pdf/ }), async (req, res) => {
-  let filePath;
+  let filesPath;
   let { name, email, did } = req.body;
   try {
     logger.info(`Processing onboarding for: ${name}`);
@@ -23,11 +23,11 @@ router.post('/submit', uploadFiles('files', { maxCount: 5, allowedTypes: /pdf/ }
 
     logger.debug(`Files received: ${uploadedFiles ? uploadedFiles.length : 0}`);
 
-    filePath = getFilesPath(did);
-    const registration = await registrationRepository.createRegistration(email, did, filePath);
+    filesPath = getFilesPath(did);
+    const registration = await registrationRepository.save({email, did, filesPath});
 
     if (uploadedFiles && uploadedFiles.length != 0) {
-      filePath = await saveFiles(did, uploadedFiles)
+      filesPath = await saveFiles(did, uploadedFiles)
     }
 
     res.status(201).json({
@@ -38,8 +38,8 @@ router.post('/submit', uploadFiles('files', { maxCount: 5, allowedTypes: /pdf/ }
     sendEmail(email);
   } catch (error) {
     logger.error('Submission Error:', error);
-    if (filePath) {
-      await removeFolder(filePath);
+    if (filesPath) {
+      await removeFolder(filesPath);
     }
     if (isDuplicatedKeyError(error)) {
       res.status(400).json({ error: `DID '${did}' or email '${email}' has been already submitted`})
