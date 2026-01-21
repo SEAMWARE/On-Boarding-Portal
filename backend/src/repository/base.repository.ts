@@ -1,4 +1,5 @@
 import { DataSource, Repository, ObjectLiteral, FindOptionsWhere, FindManyOptions } from "typeorm";
+import { PaginatedResult } from "../type/pagination-result";
 
 export interface PaginationOptions<T> {
     page?: number;
@@ -33,7 +34,7 @@ export abstract class BaseRepository<T extends ObjectLiteral> {
         return result.affected !== 0;
     }
 
-    async find(options: PaginationOptions<T>) {
+    async find(options: PaginationOptions<T>): Promise<PaginatedResult<T>> {
         const { page = 1, limit = 10, where, order } = options;
         const skip = (page - 1) * limit;
 
@@ -48,6 +49,7 @@ export abstract class BaseRepository<T extends ObjectLiteral> {
             items,
             total,
             page,
+            limit,
             totalPages: Math.ceil(total / limit)
         };
     }

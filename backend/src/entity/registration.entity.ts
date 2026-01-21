@@ -33,4 +33,9 @@ export class Registration {
 
     @UpdateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)", onUpdate: "CURRENT_TIMESTAMP(6)" })
     updatedAt?: Date;
+
+    toJSON() {
+        const { filesPath, ...registration } = this;
+        return registration;
+    }
 }
