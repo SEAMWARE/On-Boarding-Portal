@@ -66,6 +66,22 @@ router.get('/admin/registrations/:id', authFilter, async (req: Request, res: Res
     }
 });
 
+router.put('/admin/registrations/:id', authFilter, async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { status, reason } = req.body;
+    const registration = await registrationRepository.updateStatus(id as string, status, reason);
+    if (!registration) {
+        return res.status(404).json({
+            message: `Registration with ID ${id} not found`
+        });
+    }
+
+    const response: AdminRegistration = registration;
+    if (registration?.filesPath) {
+        response.files = await storageService.listFiles(registration.filesPath);
+    }
+    res.status(200).json(response);
+})
 router.get('/admin/registrations/:id/files', authFilter, async (req: Request, res: Response) => {
     try {
         const { id } = req.params;

@@ -1,0 +1,31 @@
+<div class="page-container">
+    <app-toolbar [showAdminLogin]="false" [showOnBoarding]="false" [showUserMenu]="true" />
+    <div class="content-area">
+        <mat-card class="dashboard-card">
+            <mat-card-header>
+                <div class="header-container">
+                    <mat-card-title>Review Registration</mat-card-title>
+                </div>
+            </mat-card-header>
+            <br/>
+            <mat-card-content>
+                @if(isLoading()){
+                <mat-progress-bar mode="indeterminate" style="margin-top: 16px;" />
+                }@else if (registration) {
+                <app-registration-details [editable]="true" [registration]="registration" />
+                } @else {
+                <div class="error-container mat-elevation-z2">
+                    <mat-icon class="error-icon">search_off</mat-icon>
+                    <h2>No Registration Found</h2>
+                    <p>We couldn't find the details for the ID provided. It may have been deleted or you might not have
+                        permission to view it.</p>
+                    <button mat-flat-button color="primary" (click)="goBack()">
+                        <mat-icon>arrow_back</mat-icon>
+                        RETURN TO DASHBOARD
+                    </button>
+                </div>
+                }
+            </mat-card-content>
+        </mat-card>
+    </div>
+</div>

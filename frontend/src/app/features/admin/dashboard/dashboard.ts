@@ -8,6 +8,7 @@ import { Toolbar } from "../../../core/components/toolbar/toolbar";
 import { FilterConfig } from '../../../core/types/table-filter';
 import { RegistrationStatus } from '../../../core/types/registration-status';
 import { MatCardModule } from '@angular/material/card';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-dashboard',
@@ -17,7 +18,10 @@ import { MatCardModule } from '@angular/material/card';
 })
 export class Dashboard {
 
-  constructor(private onBoardingService: OnBoardingService) { }
+  constructor(
+    private onBoardingService: OnBoardingService,
+    private readonly router: Router
+  ) { }
   readonly columns: ColumnConfig[] = [
     {
       key: 'email',
@@ -53,8 +57,13 @@ export class Dashboard {
       value: String(RegistrationStatus[key as keyof typeof RegistrationStatus])
     }))
   }];
+
   fetchRegistrations: PageQueryFn<Registration> = (page: number, limit: number, filter: { [key: string]: any }) => {
     const { status } = filter
     return this.onBoardingService.getAdminRegistrations({ page, limit, status: status });
   };
+
+  goToReview(event: Registration) {
+    this.router.navigate([`/admin/${event.id}`])
+  }
 }

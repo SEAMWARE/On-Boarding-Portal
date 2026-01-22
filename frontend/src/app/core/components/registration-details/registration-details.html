@@ -1,39 +1,100 @@
 @if(registration) {
-<div class="detail-container">
+<form [formGroup]="registrationForm" (ngSubmit)="saveChanges()" class="detail-container">
     <header class="detail-header">
         <h3>Registration Information</h3>
-        <mat-chip-set>
-            <mat-chip [attr.status]="registration.status" disabled>
-                {{ registration.status | uppercase }}
-            </mat-chip>
-        </mat-chip-set>
+
+        <mat-form-field appearance="outline">
+            <mat-label>Register Status</mat-label>
+            <mat-select formControlName="status">
+                @for (status of statusOptions; track status) {
+                <mat-option [value]="status">{{ prettyStatus(status) | titlecase}}</mat-option>
+                }
+            </mat-select>
+        </mat-form-field>
+
     </header>
 
     <div class="detail-grid">
-        <app-copy-input [value]="registration.did" label="Decentralized Identifier (DID)" appearance="outline" class="full-width" />
+        <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Decentralized Identifier (DID)</mat-label>
+            <input matInput formControlName="did">
+        </mat-form-field>
+
         <mat-form-field appearance="outline" class="full-width">
             <mat-label>Registration ID</mat-label>
-            <input matInput [value]="registration.id" readonly>
+            <input matInput formControlName="id">
             <mat-icon matSuffix>fingerprint</mat-icon>
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="full-width">
             <mat-label>Administrative Email</mat-label>
-            <input matInput [value]="registration.email" readonly>
+            <input matInput formControlName="email">
             <mat-icon matSuffix>email</mat-icon>
         </mat-form-field>
 
         <mat-form-field appearance="outline">
             <mat-label>Submission Date</mat-label>
-            <input matInput [value]="registration.createdAt | date:'dd/MM/yyyy HH:mm:ss'" readonly>
+            <input matInput [value]="registration.createdAt | date:'dd/MM/yyyy HH:mm:ss'" disabled>
             <mat-icon matSuffix>calendar_today</mat-icon>
         </mat-form-field>
 
         <mat-form-field appearance="outline">
             <mat-label>Last Update</mat-label>
-            <input matInput [value]="registration.updatedAt | date:'dd/MM/yyyy HH:mm:ss'" readonly>
+            <input matInput [value]="registration.updatedAt | date:'dd/MM/yyyy HH:mm:ss'" disabled>
             <mat-icon matSuffix>update</mat-icon>
         </mat-form-field>
+
+        @if(registration.files && registration.files.length > 0) {
+        <div class="full-width files-container">
+            <mat-label class="section-label">Attached Documents</mat-label>
+            <mat-chip-set class="chip-list">
+                @for(file of registration.files; track file.name) {
+                <mat-chip-row class="preview-chip" (click)="previewFile(file)" matTooltip="Click to preview PDF"
+                    [matTooltipShowDelay]="500" #chipTooltip="matTooltip"> <mat-icon
+                        matChipAvatar>picture_as_pdf</mat-icon>
+                    <span class="truncate">{{ file.name }}</span>
+                </mat-chip-row>
+                }
+            </mat-chip-set>
+        </div>
+        }
+        @if(editable && needRevision()) {
+        <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Reason for the revision</mat-label>
+            <textarea matInput formControlName="reason" placeholder="Provide information about the action to be taken"
+                cdkTextareaAutosize #autosize="cdkTextareaAutosize" cdkAutosizeMinRows="3"
+                cdkAutosizeMaxRows="5"></textarea>
+            <mat-icon matSuffix>comment</mat-icon>
+
+            @if(_editting()) {
+            <mat-hint>Explain why the submission needs to be reviewed</mat-hint>
+            }
+            @if (registrationForm.get('reason')?.hasError('required')) {
+            <mat-error>
+                A reason is <strong>required</strong> when the status needs review.
+            </mat-error>
+            }
+        </mat-form-field>
+        }
     </div>
-</div>
+
+    @if(editable) {
+    <div class="actions">
+        @if(!_editting()) {
+        <button type="button" matButton="filled" color="accent" (click)="enableReview()">
+            <mat-icon>edit_note</mat-icon>
+            Review
+        </button>
+        } @else {
+        <button type="submit" matButton="filled" color="primary" [disabled]="registrationForm.invalid || !registrationForm.dirty">
+            <mat-icon>save</mat-icon>
+            Save
+        </button>
+        <button type="button" matButton="tonal" color="" (click)="cancelReview()">
+            Cancel
+        </button>
+        }
+    </div>
+    }
+</form>
 }

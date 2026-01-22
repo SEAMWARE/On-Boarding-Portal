@@ -10,7 +10,7 @@
             </mat-card-header>
             <mat-card-content>
                 <app-paginated-table [fetchDataFn]="fetchRegistrations" [columnsConfig]="columns"
-                    [filtersConfig]="filters">
+                    [filtersConfig]="filters" (rowClick)="goToReview($event)">
                 </app-paginated-table>
             </mat-card-content>
         </mat-card>

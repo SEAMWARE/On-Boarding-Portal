@@ -4,6 +4,7 @@ import { Observable } from "rxjs";
 import { Injectable } from "@angular/core";
 import { PaginatedResponse, PaginationQuery } from "../types/pagination";
 import { Registration } from "../types/registration";
+import { RegistrationStatus } from "../types/registration-status";
 
 export interface RegistrationForm {
     email: string;
@@ -80,6 +81,25 @@ export class OnBoardingService {
         }
 
         return this.http.get<PaginatedResponse<Registration>>(url, { params });
+    }
+    getAdminRegistration(id: string) {
+        const url = this._resolveUrl(`${this.registrations}/${id}`);
+
+        return this.http.get<Registration>(url);
+    }
+
+    getAdminFile(id: string, filename: string): Observable<Blob> {
+
+        const url = this._resolveUrl(`${this.registrations}/${id}/files/${filename}`)
+
+        return this.http.get(url,{ responseType: 'blob' })
+    }
+
+    updateAdminRegistration(id: string, data: {status: RegistrationStatus, reason: string}): Observable<Registration> {
+
+        data.status = data.status || '';
+        const url = this._resolveUrl(`${this.registrations}/${id}`)
+        return this.http.put<Registration>(url, data);
     }
 
     _getHeaders(): HttpHeaders {

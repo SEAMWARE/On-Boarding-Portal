@@ -1,6 +1,7 @@
+$main-bg-color: #f9f9f9;
 .detail-container {
     padding: 16px;
-    background: #f9f9f9;
+    background: $main-bg-color;
     border-radius: 12px;
     border: 1px solid #e0e0e0;
 
@@ -65,4 +66,83 @@ mat-chip {
         --mat-chip-disabled-label-text-color: #15803d;
         border: 1px solid #dcfce7;
     }
+}
+
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+  gap: 1rem;
+  button {
+    min-width: 120px;
+
+    mat-icon {
+      margin-right: 8px;
+    }
+  }
+}
+
+@media (max-width: 600px) {
+  .actions {
+    flex-direction: column-reverse;
+
+    button {
+      width: 100%;
+    }
+  }
+}
+
+// upload files
+.files-container {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 6px;
+  box-sizing: border-box;
+  padding: 0 18px 8px 18px;
+  .section-label {
+    position: relative;
+    top: -10px;
+    left: -30px;
+    background-color: $main-bg-color;
+    display: inline-block;
+    padding: 0px 6px;
+    box-sizing: border-box;
+    font-size: var(--mat-form-field-outlined-label-text-populated-size);
+    font-family: var(--mat-form-field-outlined-label-text-font, var(--mat-sys-body-large-font));
+    font-weight: var(--mat-form-field-outlined-label-text-weight, var(--mat-sys-body-large-weight));
+    letter-spacing: var(--mat-form-field-outlined-label-text-tracking, var(--mat-sys-body-large-tracking));
+    transform: scale(var(--mat-mdc-form-field-floating-label-scale, 0.75));
+    color: var(--mat-form-field-outlined-disabled-label-text-color, color-mix(in srgb, var(--mat-sys-on-surface) 38%, transparent));
+  }
+
+  .chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .preview-chip {
+    cursor: pointer !important;
+    transition: all 0.2s ease-in-out;
+    max-width: 300px;
+
+    &:hover {
+      background-color: rgba(0, 0, 0, 0.1) !important;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    mat-icon {
+      color: #d32f2f;
+    }
+
+    .truncate {
+      display: inline-block;
+      max-width: 180px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      vertical-align: middle;
+    }
+  }
 }
