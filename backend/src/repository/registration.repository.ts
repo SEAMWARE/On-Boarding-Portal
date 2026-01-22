@@ -8,8 +8,8 @@ class RegistrationRepository extends BaseRepository<Registration> {
         super(Registration, AppDataSource);
     }
 
-    async updateStatus(id: string, status: RegistrationStatus): Promise<Registration | null> {
-        return super.update(id, { status })
+    async updateStatus(id: string, status: RegistrationStatus, reason?: string): Promise<Registration | null> {
+        return super.update(id, { status, reason })
     }
 }
 

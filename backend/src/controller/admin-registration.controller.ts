@@ -1,5 +1,5 @@
 import { Request, Response, Router } from "express";
-import { RegistrationStatus } from "../entity/registration.entity";
+import { AdminRegistration, RegistrationStatus } from "../entity/registration.entity";
 import { In } from "typeorm";
 import { registrationRepository } from "../repository/registration.repository";
 import { PaginationHeader } from "../headers/pagination.headers";
@@ -45,14 +45,17 @@ router.get('/admin/registrations/:id', authFilter, async (req: Request, res: Res
         const { id } = req.params;
 
         const registration = await registrationRepository.findById(id);
-
         if (!registration) {
             return res.status(404).json({
                 message: `Registration with ID ${id} not found`
             });
         }
 
-        res.status(200).json(registration);
+        const response: AdminRegistration = registration;
+        if (registration?.filesPath) {
+            response.files = await storageService.listFiles(registration.filesPath);
+        }
+        res.status(200).json(response);
 
     } catch (error) {
         console.error('Error fetching registration:', error);

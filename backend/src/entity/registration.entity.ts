@@ -1,4 +1,5 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { FileMetadata } from "../type/file-metadata";
 
 export enum RegistrationStatus {
     PENDING = "pending",
@@ -28,6 +29,8 @@ export class Registration {
     @Column({ nullable: true })
     filesPath?: string;
 
+    @Column({ nullable: true, type: 'text'})
+    reason?: string;
     @CreateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)" })
     createdAt?: Date;
 
@@ -38,4 +41,8 @@ export class Registration {
         const { filesPath, ...registration } = this;
         return registration;
     }
+}
+
+export interface AdminRegistration extends Registration {
+    files?: FileMetadata[];
 }

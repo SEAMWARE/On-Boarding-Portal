@@ -1,6 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { FileMetadata } from '../type/fille-metadata';
+import { FileMetadata } from '../type/file-metadata';
 
 export class StorageService {
 
