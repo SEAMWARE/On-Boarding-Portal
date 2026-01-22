@@ -6,6 +6,11 @@
 // custom components at https://material.angular.dev/guide/theming
 @use '@angular/material' as mat;
 
+:root {
+  --app-navy-gradient: linear-gradient(35deg, var(--mat-sys-primary) 0%, var(--mat-sys-on-primary-fixed) 100%);
+  --app-container-width: 1100px;
+}
+
 html {
   color-scheme: light;
   @include mat.theme((
@@ -13,6 +18,10 @@ html {
     typography: Roboto,
     density: 0
   ));
+  background: var(--app-navy-gradient);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  background-size: cover;
 }
 
 body {
@@ -40,8 +49,4 @@ body {
   --mat-snack-bar-container-color: #2231b3;
   --mat-snack-bar-button-color: eff6ff;
   box-shadow: 0px 3px 5px rgba(0, 0, 0, 0.2);
-}
-:root {
-  --app-navy-gradient: linear-gradient(35deg, var(--mat-sys-primary) 0%, var(--mat-sys-on-primary-fixed) 100%);
-  --app-container-width: 1100px;
 }
