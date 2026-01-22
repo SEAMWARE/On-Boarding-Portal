@@ -39,8 +39,8 @@
                                 <mat-hint>Leaving this field empty will trigger automated DID generation.</mat-hint>
                             </mat-form-field>
 
-                            <app-upload-file label="Legal Evidence & Proof of Identity" accept="application/pdf"
-                                [maxFileSizeMB]="5" [multiple]="true" (filesChanged)="onFileSelected($event)" />
+                            <app-upload-file label="Signed Acceptance Agreement" accept="application/pdf"
+                                [maxFileSizeMB]="5" [multiple]="false" (filesChanged)="onFileSelected($event)" />
                         </form>
 
                         <div class="actions-footer">

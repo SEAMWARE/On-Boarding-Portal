@@ -3,7 +3,7 @@
 
     <button type="button" mat-stroked-button color="primary" (click)="fileInput.click()">
         <mat-icon>upload_file</mat-icon>
-        {{ selectedFiles.length > 0 ? 'ADD MORE' : 'SELECT' }}
+        {{ selectedFiles.length === 0 || !multiple ? 'SELECT' : 'ADD MORE' }}
     </button>
 
     <input #fileInput type="file" [accept]="accept" [multiple]="multiple" (change)="onFileSelected($event)" hidden>
