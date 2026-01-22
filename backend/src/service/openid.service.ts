@@ -19,28 +19,36 @@ class OidcService {
 
     async login(req: Request, res: Response) {
 
-        const { codeChallenge, clientId: client_id } = app.login
-        const redirect_uri = `${this._getHostUrl(req)}/api/login/callback`
-        const state = randomUUID();
-        const nonce = randomUUID();
-        const issuer = await this.getIssuer();
-        const params: Record<string, string> = {
-            redirect_uri,
-            state,
-            nonce,
-            client_id,
-        }
+        try {
+            const { codeChallenge, clientId: client_id } = app.login
+            const redirect_uri = `${this._getHostUrl(req)}/api/login/callback`
+            const state = randomUUID();
+            const nonce = randomUUID();
+            const issuer = await this.getIssuer();
+            const params: Record<string, string> = {
+                redirect_uri,
+                state,
+                nonce,
+                client_id,
+            }
 
-        if (codeChallenge) {
-            params.code_challenge_method = 'S256';
-            const verifier = client.randomPKCECodeVerifier()
-            res.cookie('pkce_verifier', verifier, { httpOnly: req.protocol === 'https', maxAge: VERIFIER_MAX_AGE_MS });
-            params.code_challenge = await client.calculatePKCECodeChallenge(verifier);
+            if (codeChallenge) {
+                params.code_challenge_method = 'S256';
+                const verifier = client.randomPKCECodeVerifier()
+                res.cookie('pkce_verifier', verifier, { httpOnly: req.protocol === 'https', maxAge: VERIFIER_MAX_AGE_MS });
+                params.code_challenge = await client.calculatePKCECodeChallenge(verifier);
+            }
+            const redirectToUrl: URL = client.buildAuthorizationUrl(issuer, params);
+            const redirectTo = decodeURIComponent(redirectToUrl.toString());
+            logger.info(`Redirect to ${redirectTo}`)
+            res.redirect(redirectTo.toString())
+
+        } catch(error) {
+            logger.error("Unable to login", error);
+            res.status(500).json({
+                error: 'Unable to login. Try it later'
+            })
         }
-        const redirectToUrl: URL = client.buildAuthorizationUrl(issuer, params);
-        const redirectTo = decodeURIComponent(redirectToUrl.toString());
-        logger.info(`Redirect to ${redirectTo}`)
-        res.redirect(redirectTo.toString())
     }
 
     async refresh(req: Request, res: Response) {
