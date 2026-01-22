@@ -53,17 +53,17 @@
           <td mat-cell *matCellDef="let row">
             @switch (col.type) {
               @case ('date') {
-                {{ row[col.key] | date: (col.dateFormat || 'mediumDate') }}
+                {{ getValue(col, row) | date: (col.dateFormat || 'mediumDate') }}
               }
               @case ('text') {
                 @if (col.uppercase) {
-                  {{ row[col.key] | uppercase }}
+                  {{ getValue(col, row) | uppercase }}
                 } @else {
-                  {{ row[col.key] }}
+                  {{ getValue(col, row) }}
                 }
               }
               @default {
-                {{ row[col.key] }}
+                {{ getValue(col, row) }}
               }
             }
           </td>

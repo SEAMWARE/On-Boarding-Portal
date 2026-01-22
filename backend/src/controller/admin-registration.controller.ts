@@ -29,6 +29,14 @@ router.get('/admin/registrations', authFilter, async (req: Request, res: Respons
             order: { [sortBy]: order }
         });
 
+        if (result.items) {
+            const filePromises = result.items.map(async (reg) => {
+                if (reg.filesPath) {
+                    (reg as AdminRegistration).files = await storageService.listFiles(reg.filesPath);
+                }
+            });
+            await Promise.all(filePromises);
+        }
         res.status(200).json(result);
 
     } catch (error) {

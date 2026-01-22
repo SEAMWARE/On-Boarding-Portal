@@ -38,7 +38,11 @@ export class Toolbar {
   }
 
   onAdminLogin() {
-    this.authService.login();
+    if (this.authService.isLoggedIn) {
+      this.goAdminDashboard();
+    } else {
+      this.authService.login();
+    }
   }
 
   onSubmit(): void {

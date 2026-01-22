@@ -32,7 +32,8 @@ export class Dashboard {
       key: 'status',
       label: 'Current Status',
       type: 'text',
-      uppercase: true
+      uppercase: true,
+      getValue: (row) => row.status.split("_").join(" ")
     },
     {
       key: 'createdAt',
@@ -40,11 +41,17 @@ export class Dashboard {
       type: 'date',
       dateFormat: 'dd/MM/yyyy HH:mm'
     },
-      {
+    {
       key: 'updatedAt',
       label: 'Last Update',
       type: 'date',
       dateFormat: 'dd/MM/yyyy HH:mm:ss'
+    },
+    {
+      key: 'files',
+      label: '# Files',
+      type: 'number',
+      getValue: (row) => row.files? row.files?.length : 0
     }
   ];
   readonly filters: FilterConfig[] = [{
@@ -53,7 +60,7 @@ export class Dashboard {
     type: 'enum',
     multiple: true,
     options: Object.keys(RegistrationStatus).map(key => ({
-      label: key,
+      label: key.split("_").join(" "),
       value: String(RegistrationStatus[key as keyof typeof RegistrationStatus])
     }))
   }];

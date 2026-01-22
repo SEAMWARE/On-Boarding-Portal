@@ -88,4 +88,11 @@ export class PaginatedTable<T> implements OnInit {
   onRowClicked(row: T): void {
     this.rowClick.emit(row);
   }
+
+  getValue(columnsConfig: ColumnConfig, row: any): any {
+    if (columnsConfig.getValue) {
+      return columnsConfig.getValue(row)
+    }
+    return row[columnsConfig.key];
+  }
 }

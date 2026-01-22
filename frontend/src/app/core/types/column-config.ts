@@ -2,6 +2,7 @@ interface BaseColumn {
   key: string;
   label: string;
   type: 'text' | 'date' | 'number';
+  getValue?: (row: any) => any;
 }
 
 export interface TextColumn extends BaseColumn {
