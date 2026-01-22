@@ -7,6 +7,7 @@ export enum RegistrationStatus {
     UNDER_REVIEW = "under_review",
     ACTION_REQUIRED = "action_required",
     ACTIVE = "active",
+    REJECTED = "rejected"
 }
 
 @Entity()
@@ -14,7 +15,7 @@ export class Registration {
     @PrimaryGeneratedColumn("uuid")
     id!: string;
 
-    @Column({ unique: true})
+    @Column({ unique: true })
     email!: string;
 
     @Column({ unique: true })

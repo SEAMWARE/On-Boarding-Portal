@@ -55,7 +55,9 @@ mat-chip {
         color: #b45309;
     }
 
-    &[status="action_required"] {
+    &[status="action_required"],
+    &[status="rejected"]
+     {
         --mat-chip-elevated-disabled-container-color: #fef2f2;
         --mat-chip-disabled-label-text-color: #b91c1c;
         border: 1px solid #fee2e2;

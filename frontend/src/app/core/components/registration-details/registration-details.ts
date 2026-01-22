@@ -80,18 +80,6 @@ export class RegistrationDetails implements OnInit {
     }
 
   }
-
-  getStatusColor(status: RegistrationStatus): string {
-    const colors: Record<RegistrationStatus, string> = {
-      [RegistrationStatus.PENDING]: 'warn',
-      [RegistrationStatus.SUBMITTED]: 'accent',
-      [RegistrationStatus.UNDER_REVIEW]: 'primary',
-      [RegistrationStatus.ACTION_REQUIRED]: 'warn',
-      [RegistrationStatus.ACTIVE]: 'success'
-    };
-    return colors[status] || 'default';
-  }
-
   enableReview(): void {
     this._editting.set(true);
     this.registrationForm.enable();
