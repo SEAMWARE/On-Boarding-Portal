@@ -13,6 +13,8 @@ import { NotificationService } from '../../services/notification';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { OnBoardingService } from '../../services/onboarding.service';
 import { conditionalValidator } from '../../validators/conditional-validator';
+import { MatDialog } from '@angular/material/dialog';
+import { PdfViewer } from '../pdf-viewer/pdf-viewer';
 
 @Component({
   selector: 'app-registration-details',
@@ -42,7 +44,8 @@ export class RegistrationDetails implements OnInit {
   constructor(
     private fb: FormBuilder,
     private notification: NotificationService,
-    private onBoardingService: OnBoardingService
+    private onBoardingService: OnBoardingService,
+    private dialog: MatDialog
   ) {
     if (this.editable) {
       effect(() => {
@@ -131,12 +134,12 @@ export class RegistrationDetails implements OnInit {
 
     this.onBoardingService.getAdminFile(this.registration.id, file.name).subscribe({
       next: (blob) => {
-        const blobUrl = URL.createObjectURL(blob);
-        const newWindow = window.open(blobUrl, '_blank');
-
-        if (!newWindow) {
-          this.notification.info('Please allow pop-ups to preview the PDF');
-        }
+        this.dialog.open(PdfViewer, {
+          data: { blob: blob, title: file.name },
+          maxWidth: '100vw',
+          maxHeight: '100vh',
+          autoFocus: false
+        });
       },
       error: (error) => {
         console.log("Error download file", error);

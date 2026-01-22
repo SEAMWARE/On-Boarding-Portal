@@ -1,0 +1,56 @@
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 16px;
+    background-color: var(--mat-sys-surface);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+
+    .header-title-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        h2 {
+            margin: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 60vw;
+            display: flex;
+            align-items: center;
+            padding:8px
+        }
+    }
+
+    button[mat-icon-button] {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+}
+
+.pdf-viewer-content {
+    width: 90vw;
+    height: 80vh;
+    padding: 0 !important;
+    margin: 0;
+    overflow: hidden;
+
+    embed {
+        display: block;
+        border: none;
+    }
+}
+
+.error-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 1rem;
+    color: var(--mat-sys-on-surface-variant);
+}
