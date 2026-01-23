@@ -9,7 +9,7 @@
         <mat-step [stepControl]="orgForm" errorMessage="Required">
             <ng-template matStepLabel>Company Information</ng-template>
 
-            <form [formGroup]="orgForm" class="form-grid">
+            <form [formGroup]="orgForm" class="grid-layout">
                 <mat-form-field appearance="outline" class="span-12">
                     <mat-label>Official Registered Name</mat-label>
                     <input matInput formControlName="name" placeholder="e.g. Acme Corporation S.L.">
@@ -53,7 +53,7 @@
         <mat-step [stepControl]="contactForm" errorMessage="Required">
             <ng-template matStepLabel>Contact Information</ng-template>
 
-            <form [formGroup]="contactForm" class="form-grid">
+            <form [formGroup]="contactForm" class="grid-layout">
                 <mat-form-field appearance="outline" class="span-12">
                     <mat-label>Administrative Contact Email</mat-label>
                     <input matInput formControlName="email" type="email" placeholder="compliance@entity.com">

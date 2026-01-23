@@ -17,30 +17,6 @@ $main-bg-color: #f9f9f9;
             font-weight: 500;
         }
     }
-
-    .detail-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 16px;
-
-        mat-form-field {
-            width: 100%;
-        }
-
-        .full-width {
-            grid-column: 1 / -1;
-        }
-    }
-}
-
-@media (max-width: 600px) {
-  .detail-grid {
-    grid-template-columns: 1fr !important;
-
-    .full-width {
-      grid-column: auto;
-    }
-  }
 }
 
 mat-chip {

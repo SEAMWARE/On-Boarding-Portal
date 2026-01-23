@@ -14,19 +14,19 @@
 
     </header>
 
-    <div class="detail-grid">
-        <mat-form-field appearance="outline" class="full-width">
+    <div class="grid-layout">
+        <mat-form-field appearance="outline" class="span-12">
             <mat-label>Decentralized Identifier (DID)</mat-label>
             <input matInput formControlName="did">
         </mat-form-field>
 
-        <mat-form-field appearance="outline" class="full-width">
+        <mat-form-field appearance="outline" class="span-12">
             <mat-label>Registration ID</mat-label>
             <input matInput formControlName="id">
             <mat-icon matSuffix>fingerprint</mat-icon>
         </mat-form-field>
 
-        <mat-form-field appearance="outline" class="full-width">
+        <mat-form-field appearance="outline" class="span-12">
             <mat-label>Administrative Email</mat-label>
             <input matInput formControlName="email">
             <mat-icon matSuffix>email</mat-icon>
@@ -45,7 +45,7 @@
         </mat-form-field>
 
         @if(registration.files && registration.files.length > 0) {
-        <div class="full-width files-container">
+        <div class="span-12 files-container">
             <mat-label class="section-label">Attached Documents</mat-label>
             <mat-chip-set class="chip-list">
                 @for(file of registration.files; track file.name) {
@@ -59,7 +59,7 @@
         </div>
         }
         @if(editable && needRevision()) {
-        <mat-form-field appearance="outline" class="full-width">
+        <mat-form-field appearance="outline" class="span-12">
             <mat-label>Reason for the revision</mat-label>
             <textarea matInput formControlName="reason" placeholder="Provide information about the action to be taken"
                 cdkTextareaAutosize #autosize="cdkTextareaAutosize" cdkAutosizeMinRows="3"

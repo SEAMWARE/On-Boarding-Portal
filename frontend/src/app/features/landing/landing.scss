@@ -73,16 +73,6 @@
   padding: 60px 0;
 }
 
-.grid-layout {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
-
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-  }
-}
-
 .feature-card {
   transition: transform 0.3s ease;
   &:hover {
