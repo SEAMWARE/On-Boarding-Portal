@@ -58,7 +58,7 @@ export class PaginatedTable<T> implements OnInit {
 
       this.filterForm.valueChanges.pipe(
         debounceTime(400),
-        distinctUntilChanged()
+        distinctUntilChanged(),
       ).subscribe(() => {
         this.currentPage = 0;
         this.loadData();

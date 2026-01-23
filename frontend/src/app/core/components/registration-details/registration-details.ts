@@ -1,4 +1,4 @@
-import { Component, effect, Input, OnInit, signal } from '@angular/core';
+import { Component, effect, Input, OnDestroy, OnInit, signal } from '@angular/core';
 import { RegistrationStatus } from '../../types/registration-status';
 import { CommonModule } from '@angular/common';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -15,6 +15,7 @@ import { OnBoardingService } from '../../services/onboarding.service';
 import { conditionalValidator } from '../../validators/conditional-validator';
 import { MatDialog } from '@angular/material/dialog';
 import { PdfViewer } from '../pdf-viewer/pdf-viewer';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-registration-details',
@@ -32,7 +33,7 @@ import { PdfViewer } from '../pdf-viewer/pdf-viewer';
   templateUrl: './registration-details.html',
   styleUrl: './registration-details.scss',
 })
-export class RegistrationDetails implements OnInit {
+export class RegistrationDetails implements OnInit, OnDestroy {
 
   @Input({ required: true }) registration!: Registration;
   @Input() editable: boolean = false;
@@ -40,6 +41,7 @@ export class RegistrationDetails implements OnInit {
   _editting = signal(false);
   statusOptions = Object.values(RegistrationStatus);
   registrationForm!: FormGroup;
+  private destroy$?: Subscription;
 
   constructor(
     private fb: FormBuilder,
@@ -60,6 +62,9 @@ export class RegistrationDetails implements OnInit {
     this.initForm();
   }
 
+  ngOnDestroy(): void {
+    this.destroy$?.unsubscribe();
+  }
   initForm() {
     this.registrationForm = this.fb.group({
       status: [this.registration.status],
@@ -72,9 +77,10 @@ export class RegistrationDetails implements OnInit {
       reason: [this.registration?.reason, [conditionalValidator(() => this.needRevision())]]
     });
 
-    this.registrationForm.get('status')?.valueChanges.subscribe(() => {
-      this.registrationForm.get('reason')?.updateValueAndValidity();
-    });
+    this.destroy$ = this.registrationForm.get('status')?.valueChanges
+      .subscribe(() => {
+        this.registrationForm.get('reason')?.updateValueAndValidity();
+      });
     if (!this._editting()) {
       this.registrationForm.disable();
     }

@@ -64,17 +64,14 @@ export class Submit {
       did: ['']
     });
 
-    this.route.fragment.subscribe((fragment) => {
-      this.selectedTabIndex = (fragment ? ANCHOR_SECTIONS.indexOf(fragment) : 0) || 0
-    });
+    const fragment = this.route.snapshot.fragment;
+    this.selectedTabIndex = (fragment ? ANCHOR_SECTIONS.indexOf(fragment) : 0) || 0
 
-    this.route.queryParams.subscribe((params) => {
-      const id = params['id'];
-      if (id && this.trackingId != id) {
-        this.trackingId = id;
-        this.search(id);
-      }
-    });
+    const id = this.route.snapshot.queryParamMap.get('id')
+    if (id && this.trackingId != id) {
+      this.trackingId = id;
+      this.search(id);
+    }
   }
 
   onSearch(): void {
@@ -103,7 +100,7 @@ export class Submit {
   }
 
   private setIdQueryParam(id?: string) {
-    const query = id ? {id} : null
+    const query = id ? { id } : null
     this.router.navigate([], {
       relativeTo: this.route,
       queryParams: query,
