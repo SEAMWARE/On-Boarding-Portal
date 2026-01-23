@@ -9,7 +9,6 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTabsModule } from '@angular/material/tabs';
-import { Clipboard } from '@angular/cdk/clipboard';
 import { OnBoardingService } from '../../core/services/onboarding.service';
 import { RegistrationDetails } from '../../core/components/registration-details/registration-details';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -55,7 +54,6 @@ export class Submit {
   constructor(
     private fb: FormBuilder,
     private notification: NotificationService,
-    private clipboard: Clipboard,
     private onBoardingService: OnBoardingService,
     private router: Router,
     private route: ActivatedRoute
@@ -72,7 +70,8 @@ export class Submit {
 
     this.route.queryParams.subscribe((params) => {
       const id = params['id'];
-      if (id) {
+      if (id && this.trackingId != id) {
+        this.trackingId = id;
         this.search(id);
       }
     });
@@ -81,15 +80,11 @@ export class Submit {
   onSearch(): void {
     if (!this.trackingId) return;
 
-    this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: { id: this.trackingId },
-      queryParamsHandling: 'merge',
-      fragment: 'search'
-    });
+    this.setIdQueryParam(this.trackingId);
 
     this.search(this.trackingId);
   }
+
   private search(id: string): void {
     this.isProcessing.set(true);
     this.onBoardingService.getRegistration(id).subscribe({
@@ -101,9 +96,20 @@ export class Submit {
       error: (error) => {
         console.error("Error getting registration", error);
         this.isProcessing.set(false);
-        this.notification.show(`Registration request ${this.registrationId} not found`);
+        this.notification.error(`Registration request ${this.registrationId} not found`);
+        this.setIdQueryParam();
       }
     })
+  }
+
+  private setIdQueryParam(id?: string) {
+    const query = id ? {id} : null
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: query,
+      queryParamsHandling: 'replace',
+      fragment: 'search'
+    });
   }
 
   updateAnchor(index: number): void {

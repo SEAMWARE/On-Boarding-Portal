@@ -52,6 +52,7 @@ router.post('/registrations/submit', uploadFiles('files', { maxCount: 5, allowed
 router.get('/registrations/submit/:id', async (req, res) => {
 
     const id = req.params.id;
+
     try {
         const registration = await registrationRepository.findById(id);
         if (!registration) {
@@ -64,7 +65,7 @@ router.get('/registrations/submit/:id', async (req, res) => {
         res.json(response);
     } catch (error) {
         logger.error(`Error getting registration '${id}'`, error)
-        res.status(500).json({ error: 'Internal Server Error' });
+        res.status(404).json({ message: `Registration '${id}' does not found` });
     }
 
 })
