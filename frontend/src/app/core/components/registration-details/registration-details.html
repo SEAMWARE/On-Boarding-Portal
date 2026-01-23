@@ -3,6 +3,7 @@
     <header class="detail-header">
         <h3>Registration Information</h3>
 
+        @if(editable) {
         <mat-form-field appearance="outline">
             <mat-label>Register Status</mat-label>
             <mat-select formControlName="status">
@@ -11,6 +12,13 @@
                 }
             </mat-select>
         </mat-form-field>
+        } @else {
+        <mat-chip-set>
+            <mat-chip [attr.status]="registration.status" disabled>
+                {{ registration.status | uppercase }}
+            </mat-chip>
+        </mat-chip-set>
+        }
 
     </header>
 
@@ -58,9 +66,9 @@
             </mat-chip-set>
         </div>
         }
-        @if(editable && needRevision()) {
+        @if(needRevision()) {
         <mat-form-field appearance="outline" class="span-12">
-            <mat-label>Reason for the revision</mat-label>
+            <mat-label>{{ 'Reason for the revision' }}</mat-label>
             <textarea matInput formControlName="reason" placeholder="Provide information about the action to be taken"
                 cdkTextareaAutosize #autosize="cdkTextareaAutosize" cdkAutosizeMinRows="3"
                 cdkAutosizeMaxRows="5"></textarea>
@@ -86,7 +94,8 @@
             Review
         </button>
         } @else {
-        <button type="submit" matButton="filled" color="primary" [disabled]="registrationForm.invalid || !registrationForm.dirty">
+        <button type="submit" matButton="filled" color="primary"
+            [disabled]="registrationForm.invalid || !registrationForm.dirty">
             <mat-icon>save</mat-icon>
             Save
         </button>

@@ -113,7 +113,7 @@ export class RegistrationDetails implements OnInit {
 
   needRevision(): boolean {
     if (this.registrationForm) {
-      return this.registrationForm.get('status')?.value === RegistrationStatus.ACTION_REQUIRED;
+      return [RegistrationStatus.REJECTED, RegistrationStatus.ACTION_REQUIRED].includes(this.registrationForm.get('status')?.value);
     }
     return false;
   }
