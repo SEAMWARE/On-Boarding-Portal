@@ -10,6 +10,11 @@ export interface RegistrationInfo {
     email: string;
     name: string;
     did?: string;
+    taxId: string;
+    address: string;
+    city: string;
+    postCode: string;
+    country: string;
 }
 
 @Injectable({
@@ -35,15 +40,12 @@ export class OnBoardingService {
         const url = this._resolveUrl(this.submitPath);
 
         const headers = this._getHeaders();
-
         const body = new FormData();
-
-        body.append('name', formValues.name);
-        body.append('email', formValues.email);
-
-        if (formValues.did) {
-            body.append('did', formValues.did);
-        }
+        Object.entries(formValues).forEach( ([key, value]) => {
+            if (value) {
+                body.append(key, value)
+            }
+        })
 
         body.append('files', file, file.name);
 

@@ -60,7 +60,7 @@ export class RegistrationForm {
       taxId: ['', Validators.required],
       address: ['', Validators.required],
       city: ['', Validators.required],
-      postalCode: ['', Validators.required],
+      postCode: ['', Validators.required],
       country: ['', Validators.required]
     });
 

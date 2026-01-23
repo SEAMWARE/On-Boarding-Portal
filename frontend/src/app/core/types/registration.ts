@@ -5,6 +5,12 @@ export interface Registration {
     email: string;
     did: string;
     status: RegistrationStatus;
+    name: string;
+    taxId: string;
+    address: string;
+    city: string;
+    postCode: string;
+    country: string;
     files?: FileMetadata[];
     reason?: string;
     createdAt: Date;

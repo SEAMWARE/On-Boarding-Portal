@@ -10,24 +10,20 @@ const router = Router()
 
 router.post('/registrations/submit', uploadFiles('files', { maxCount: 5, allowedTypes: /pdf/ }), async (req, res) => {
     let filesPath;
-    let { name, email, did } = req.body;
+    let {file, ...data} = req.body;
     try {
-        logger.info(`Processing onboarding for: ${name}`);
+        logger.info(`Processing onboarding for: ${data.name}`);
 
-        did = did || generateDid();
+        data.did = data.did || generateDid();
         const uploadedFiles = req.files as Express.Multer.File[];
-
-        if (!name || !email) {
-            return res.status(400).json({ error: 'Missing mandatory fields: name or email' });
-        }
 
         logger.debug(`Files received: ${uploadedFiles ? uploadedFiles.length : 0}`);
 
-        filesPath = getFilesPath(did);
-        const registration = await registrationRepository.save({ email, did, filesPath });
+        filesPath = getFilesPath(data.did);
+        const registration = await registrationRepository.save({...data, filesPath });
 
         if (uploadedFiles && uploadedFiles.length != 0) {
-            filesPath = await saveFiles(did, uploadedFiles)
+            filesPath = await saveFiles(data.did, uploadedFiles)
         }
 
         res.status(201).json({
@@ -35,14 +31,14 @@ router.post('/registrations/submit', uploadFiles('files', { maxCount: 5, allowed
             did: registration.did,
             timestamp: new Date().toISOString()
         });
-        sendEmail(email);
+        sendEmail(data.email);
     } catch (error) {
         logger.error('Submission Error:', error);
         if (filesPath) {
             await removeFolder(filesPath);
         }
         if (isDuplicatedKeyError(error)) {
-            res.status(400).json({ error: `DID '${did}' or email '${email}' has been already submitted` })
+            res.status(400).json({ error: `DID '${data.did}' or email '${data.email}' has been already submitted` })
             return
         }
         res.status(500).json({ error: 'Internal Server Error' });

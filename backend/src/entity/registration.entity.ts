@@ -27,6 +27,19 @@ export class Registration {
     })
     status!: RegistrationStatus;
 
+    @Column()
+    name!: string;
+    @Column()
+    taxId!: string;
+    @Column()
+    address!: string;
+    @Column()
+    city!: string;
+    @Column()
+    postCode!: string;
+    @Column()
+    country!: string;
+
     @Column({ nullable: true })
     filesPath?: string;
 
