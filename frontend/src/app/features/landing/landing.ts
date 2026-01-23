@@ -30,8 +30,8 @@ export class Landing {
   ) { }
 
 
-  onSubmit(): void {
-    this.router.navigate(['/submit']);
+  onSubmit(fragment?: string): void {
+    this.router.navigate(['/submit'], {fragment: fragment});
   }
 
 }

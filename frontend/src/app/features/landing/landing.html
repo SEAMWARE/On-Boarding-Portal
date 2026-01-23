@@ -1,4 +1,4 @@
-<app-toolbar/>
+<app-toolbar />
 <main class="content-wrapper">
   <section class="hero-bg">
     <div class="container">
@@ -14,9 +14,13 @@
               </p>
 
               <div class="action-row">
-                <button mat-fab extended color="primary" (click)="onSubmit()">
+                <button matFab extended (click)="onSubmit()">
                   <mat-icon>add_business</mat-icon>
                   START ONBOARDING PROCESS
+                </button>
+                <button matFab extended (click)="onSubmit('search')">
+                  <mat-icon>search</mat-icon>
+                  CHECK ONBOARDING STATUS
                 </button>
               </div>
             </div>
