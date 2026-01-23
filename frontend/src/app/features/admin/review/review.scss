@@ -11,6 +11,12 @@
   justify-content: center;
 }
 
+.header-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
 .dashboard-card {
   padding: 16px 32px;
   width: 100%;

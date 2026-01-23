@@ -5,28 +5,6 @@
   padding: 0 24px;
 }
 
-.main-header {
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-
-  .header-container {
-    display: flex;
-    align-items: center;
-    width: 100%;
-    max-width: var(--app-container-width);
-    margin: 0 auto;
-  }
-
-  .brand {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-weight: 700;
-    color: var(--mat-sys-on-primary-fixed);
-  }
-}
-
 .hero-bg {
   padding: 80px 0;
 }

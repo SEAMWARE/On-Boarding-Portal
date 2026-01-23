@@ -4,10 +4,13 @@
         <mat-card class="dashboard-card">
             <mat-card-header>
                 <div class="header-container">
-                    <mat-card-title>Review Registration</mat-card-title>
+                    <button mat-icon-button (click)="goBack()" type="button" matTooltip="Back to previous step">
+                        <mat-icon>arrow_back</mat-icon>
+                    </button>
+                    <mat-card-title>Review Registrations</mat-card-title>
                 </div>
             </mat-card-header>
-            <br/>
+            <br />
             <mat-card-content>
                 @if(isLoading()){
                 <mat-progress-bar mode="indeterminate" style="margin-top: 16px;" />
