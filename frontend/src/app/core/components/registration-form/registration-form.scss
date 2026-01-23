@@ -1,0 +1,30 @@
+.mat-stepper-horizontal {
+  border-radius: 8px;
+}
+.stepper-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.actions-footer {
+  margin-top: 20px;
+
+  mat-progress-bar {
+    margin-bottom: 10px;
+  }
+}
+
+.success-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 20px 0;
+
+  .id-input-field {
+    flex: 1;
+    min-width: 450px;
+  }
+}

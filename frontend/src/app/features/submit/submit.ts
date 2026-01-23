@@ -10,13 +10,12 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTabsModule } from '@angular/material/tabs';
 import { Clipboard } from '@angular/cdk/clipboard';
-import { OnBoardingService, RegistrationForm } from '../../core/services/onboarding.service';
+import { OnBoardingService } from '../../core/services/onboarding.service';
 import { RegistrationDetails } from '../../core/components/registration-details/registration-details';
 import { ActivatedRoute, Router } from '@angular/router';
-import { UploadFile } from "../../core/components/upload-file/upload-file";
 import { NotificationService } from '../../core/services/notification';
-import { CopyInput } from '../../core/components/copy-input/copy-input';
 import { Toolbar } from '../../core/components/toolbar/toolbar';
+import { RegistrationForm } from '../../core/components/registration-form/registration-form';
 
 const ANCHOR_SECTIONS: string[] = [
   'register',
@@ -39,8 +38,7 @@ const ANCHOR_SECTIONS: string[] = [
     MatSnackBarModule,
     Toolbar,
     RegistrationDetails,
-    UploadFile,
-    CopyInput
+    RegistrationForm
   ],
   templateUrl: './submit.html',
   styleUrl: './submit.scss',
@@ -78,41 +76,6 @@ export class Submit {
         this.search(id);
       }
     });
-  }
-
-  onFileSelected(event: File[]): void {
-    this.selectedFiles = event;
-    console.debug("files", event)
-  }
-
-  removeFile(index: number): void {
-
-    this.selectedFiles.splice(index, 1);
-
-    if (this.selectedFiles.length === 0) {
-      this.notification.info('All documents removed', { duration: 2000 });
-    }
-  }
-
-  submitRegistration(): void {
-    if (this.registrationForm.valid) {
-      this.isProcessing.set(true);
-
-      this.onBoardingService.submitRegistration(
-        this.registrationForm.value as RegistrationForm,
-        this.selectedFiles
-      ).subscribe({
-        next: (response) => {
-          this.registrationId = response.id;
-          this.isProcessing.set(false);
-        },
-        error: (err) => {
-          this.isProcessing.set(false);
-          this.notification.error('Error submitting the application');
-          console.error('Submission Error:', err);
-        }
-      });
-    }
   }
 
   onSearch(): void {

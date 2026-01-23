@@ -12,64 +12,9 @@
                         <span>REGISTER ENTITY</span>
                     </ng-template>
                     <div class="tab-content">
-                        @if(!registrationId) {
-                        <header class="section-header">
-                            <h2>Organization Details</h2>
-                            <p>Complete the administrative profile to initialize the data space integration.</p>
-                        </header>
-
-                        <form [formGroup]="registrationForm" class="form-grid">
-                            <mat-form-field appearance="outline">
-                                <mat-label>Legal Entity Name</mat-label>
-                                <input matInput formControlName="name" placeholder="e.g. Global Data Solutions Ltd.">
-                                <mat-icon matSuffix>business</mat-icon>
-                            </mat-form-field>
-
-                            <mat-form-field appearance="outline">
-                                <mat-label>Administrative Contact Email</mat-label>
-                                <input matInput formControlName="email" type="email"
-                                    placeholder="compliance@entity.com">
-                                <mat-icon matSuffix>alternate_email</mat-icon>
-                            </mat-form-field>
-
-                            <mat-form-field appearance="outline">
-                                <mat-label>Decentralized Identifier (DID)</mat-label>
-                                <input matInput formControlName="did" placeholder="did:web:domain.com">
-                                <mat-icon matSuffix>fingerprint</mat-icon>
-                                <mat-hint>Leaving this field empty will trigger automated DID generation.</mat-hint>
-                            </mat-form-field>
-
-                            <app-upload-file label="Signed Acceptance Agreement" accept="application/pdf"
-                                [maxFileSizeMB]="5" [multiple]="false" (filesChanged)="onFileSelected($event)" />
-                        </form>
-
-                        <div class="actions-footer">
-                            @if(isProcessing()) {
-                            <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-                            }
-                            <button mat-flat-button color="primary"
-                                [disabled]="registrationForm.invalid || isProcessing()" (click)="submitRegistration()">
-                                SUBMIT APPLICATION
-                            </button>
-                        </div>
-                        } @else {
-                        <div class="success-container animate-fade-in">
-                            <h2>Submission Received</h2>
-                            <p class="success-description">
-                                The application has been successfully queued for review. A confirmation email has been
-                                sent
-                                to the administrative address provided. Please save the following Request ID to track
-                                the onboarding status.
-                            </p>
-
-                            <app-copy-input class="id-input-field" [value]="registrationId" label="Registration ID"
-                                hint="Use this ID to track your application status in the 'Track Progress' tab.">
-                            </app-copy-input>
-                        </div>
-                        }
+                        <app-registration-form />
                     </div>
                 </mat-tab>
-
                 <mat-tab>
                     <ng-template mat-tab-label>
                         <mat-icon class="tab-icon">track_changes</mat-icon>

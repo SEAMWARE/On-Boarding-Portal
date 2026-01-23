@@ -1,0 +1,110 @@
+<div class="tab-content">
+    @if(!registrationId) {
+    <header class="section-header">
+        <h2>Organization Registration</h2>
+        <p>Follow the steps to initialize your data space integration.</p>
+    </header>
+
+    <mat-stepper linear #stepper animationDuration="400ms">
+        <mat-step [stepControl]="orgForm" errorMessage="Required">
+            <ng-template matStepLabel>Company Information</ng-template>
+
+            <form [formGroup]="orgForm" class="form-grid">
+                <mat-form-field appearance="outline" class="span-12">
+                    <mat-label>Official Registered Name</mat-label>
+                    <input matInput formControlName="name" placeholder="e.g. Acme Corporation S.L.">
+                    <mat-icon matSuffix>corporate_fare</mat-icon>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="span-12">
+                    <mat-label>Full Address</mat-label>
+                    <input matInput formControlName="address" placeholder="e.g. 123 Business St. Suite 400">
+                    <mat-icon matSuffix>place</mat-icon>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="span-4">
+                    <mat-label>City</mat-label>
+                    <input matInput formControlName="city" placeholder="e.g. Madrid">
+                    <mat-icon matSuffix>location_city</mat-icon>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="span-4">
+                    <mat-label>Country</mat-label>
+                    <input matInput formControlName="country" placeholder="e.g. Spain">
+                    <mat-icon matSuffix>public</mat-icon>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="span-4">
+                    <mat-label>Postal Code</mat-label>
+                    <input matInput formControlName="postalCode" placeholder="e.g. 28001">
+                    <mat-icon matSuffix>local_post_office</mat-icon>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                    <mat-label>Tax Identifier (VAT/CIF)</mat-label>
+                    <input matInput formControlName="taxId" placeholder="e.g. ESA12345678">
+                    <mat-icon matSuffix>badge</mat-icon>
+                </mat-form-field>
+            </form>
+            <div class="stepper-actions">
+                <button mat-flat-button color="primary" matStepperNext [disabled]="orgForm.invalid">NEXT</button>
+            </div>
+        </mat-step>
+        <mat-step [stepControl]="contactForm" errorMessage="Required">
+            <ng-template matStepLabel>Contact Information</ng-template>
+
+            <form [formGroup]="contactForm" class="form-grid">
+                <mat-form-field appearance="outline" class="span-12">
+                    <mat-label>Administrative Contact Email</mat-label>
+                    <input matInput formControlName="email" type="email" placeholder="compliance@entity.com">
+                    <mat-icon matSuffix>alternate_email</mat-icon>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="span-12">
+                    <mat-label>Decentralized Identifier (DID)</mat-label>
+                    <input matInput formControlName="did" placeholder="did:web:domain.com">
+                    <mat-icon matSuffix>fingerprint</mat-icon>
+                    <mat-hint>Empty field triggers automated DID generation.</mat-hint>
+                </mat-form-field>
+            </form>
+
+            <div class="stepper-actions">
+                <button mat-button matStepperPrevious>BACK</button>
+                <button mat-flat-button color="primary" matStepperNext [disabled]="contactForm.invalid">NEXT</button>
+            </div>
+        </mat-step>
+        <mat-step [stepControl]="legalForm" errorMessage="Required">
+            <ng-template matStepLabel>Signed Document</ng-template>
+
+            <div class="legal-upload-container" style="margin-top: 20px;">
+                <app-upload-file label="Signed Acceptance Agreement" accept="application/pdf" [maxFileSizeMB]="5"
+                    [multiple]="false" (filesChanged)="onFileSelected($event)" />
+            </div>
+
+            <div class="actions-footer">
+                @if(isProcessing()) {
+                <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+                }
+                <div class="stepper-actions">
+                    <button mat-button matStepperPrevious>BACK</button>
+                    <button mat-flat-button color="primary" [disabled]="legalForm.invalid || isProcessing()"
+                        (click)="submitRegistration()">
+                        SUBMIT APPLICATION
+                    </button>
+                </div>
+            </div>
+        </mat-step>
+    </mat-stepper>
+
+    } @else {
+    <div class="success-container animate-fade-in">
+        <h2>Submission Received</h2>
+        <p class="success-description">
+            The application has been successfully queued for review. A confirmation email has been sent to the
+            administrative address provided. Please save the following Request ID to track the onboarding status.
+        </p>
+        <app-copy-input class="id-input-field" [value]="registrationId" label="Registration ID"
+            hint="Use this ID to track your application status in the 'Track Progress' tab."></app-copy-input>
+    </div>
+    }
+</div>

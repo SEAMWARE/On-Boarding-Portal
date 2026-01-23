@@ -6,7 +6,7 @@ import { PaginatedResponse, PaginationQuery } from "../types/pagination";
 import { Registration } from "../types/registration";
 import { RegistrationStatus } from "../types/registration-status";
 
-export interface RegistrationForm {
+export interface RegistrationInfo {
     email: string;
     name: string;
     did?: string;
@@ -31,7 +31,7 @@ export class OnBoardingService {
         }
     }
 
-    submitRegistration(formValues: RegistrationForm, files: File[]): Observable<any> {
+    submitRegistration(formValues: RegistrationInfo, file: File): Observable<any> {
         const url = this._resolveUrl(this.submitPath);
 
         const headers = this._getHeaders();
@@ -45,9 +45,7 @@ export class OnBoardingService {
             body.append('did', formValues.did);
         }
 
-        files.forEach((file) => {
-            body.append('files', file, file.name);
-        });
+        body.append('files', file, file.name);
 
         return this.http.post<any>(url, body, { headers });
     }

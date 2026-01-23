@@ -10,20 +10,12 @@ const filesRoot = path.join(process.cwd(), storageConfig.destFolder);
 // TODO refactor
 const storage = multer.memoryStorage();
 
-/**
- * Configuration interface for the dynamic upload middleware
- */
 interface UploadOptions {
-  maxCount?: number;      // Maximum number of files
-  allowedTypes?: RegExp;  // Regex for mimetypes and extensions
-  maxSizeMB?: number;     // Max size in Megabytes
+  maxCount?: number;
+  allowedTypes?: RegExp;
+  maxSizeMB?: number;
 }
 
-/**
- * Higher-order function that returns a configured Multer middleware.
- * @param fieldName The name of the form field containing the files
- * @param options Custom constraints for the upload
- */
 export const uploadFiles = (
   fieldName: string,
   options: UploadOptions = {}

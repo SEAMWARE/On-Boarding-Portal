@@ -35,8 +35,8 @@ export class UploadFile {
       const isValidType = this.accept.includes(file.type) || this.accept.includes(file.name.split('.').pop() || '');
       const isValidSize = file.size <= this.maxFileSizeMB * 1024 * 1024;
 
-      if (!isValidType) this.showError(`File ${file.name} is not a valid type.`);
-      if (!isValidSize) this.showError(`File ${file.name} exceeds ${this.maxFileSizeMB}MB.`);
+      if (!isValidType) this.notification.error(`File ${file.name} is not a valid type.`);
+      if (!isValidSize) this.notification.error(`File ${file.name} exceeds ${this.maxFileSizeMB}MB.`);
 
       return isValidType && isValidSize;
     });
@@ -59,7 +59,6 @@ export class UploadFile {
   previewFile(file: File): void {
     const blobUrl = URL.createObjectURL(file);
 
-    // Abrimos en una pestaña nueva
     const newWindow = window.open(blobUrl, '_blank');
 
     if (!newWindow) {
@@ -67,7 +66,4 @@ export class UploadFile {
     }
   }
 
-  private showError(message: string): void {
-    this.notification.error(message, { duration: 3000 });
-  }
 }
