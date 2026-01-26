@@ -7,6 +7,7 @@ import { oidcAuthMiddleware } from "../middleware/auth.middleware";
 import { storageService } from "../service/storage.service";
 import emailService from "../service/email.service";
 import { logger } from "../service/logger";
+import { registrationService } from "../service/registration.service";
 
 const router = Router()
 
@@ -88,6 +89,9 @@ router.put('/admin/registrations/:id', authFilter, async (req: Request, res: Res
     const response: AdminRegistration = registration;
     if (registration?.filesPath) {
         response.files = await storageService.listFiles(registration.filesPath);
+    }
+    if (status === RegistrationStatus.ACTIVE) {
+        await registrationService.register(registration.did);
     }
     res.status(200).json(response);
     // TODO should send email first?

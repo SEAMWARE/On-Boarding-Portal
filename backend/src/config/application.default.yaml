@@ -37,6 +37,10 @@ app:
     clientSecret: ''
     scope: openid
     codeChallenge: true
+  keycloak:
+    grantType: password
+    clientId: 'admin-cli'
+  tir: {}
 email:
   enabled: false
   from: 'onboarding@seamware.com'

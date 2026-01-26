@@ -13,6 +13,7 @@
   "description": "",
   "packageManager": "pnpm@10.0.0",
   "dependencies": {
+    "@keycloak/keycloak-admin-client": "^26.5.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "ejs": "^3.1.10",
