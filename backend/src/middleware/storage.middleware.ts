@@ -81,7 +81,7 @@ export const removeFolder = async (folderPath: string): Promise<boolean> => {
     logger.info(`Folder removed successfully: ${absolutePath}`);
 
   } catch (error) {
-    console.info(`Error while removing folder: ${folderPath}`, error);
+    logger.info(`Error while removing folder: ${folderPath}`, error);
   }
   return Promise.resolve(false)
 };

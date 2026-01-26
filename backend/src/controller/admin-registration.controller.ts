@@ -43,7 +43,7 @@ router.get('/admin/registrations', authFilter, async (req: Request, res: Respons
         res.status(200).json(result);
 
     } catch (error) {
-        console.error('Error fetching registrations:', error);
+        logger.error('Error fetching registrations:', error);
         res.status(500).json({
             message: 'Error retrieving registrations',
             error: error instanceof Error ? error.message : 'Unknown error'
@@ -69,7 +69,7 @@ router.get('/admin/registrations/:id', authFilter, async (req: Request, res: Res
         res.status(200).json(response);
 
     } catch (error) {
-        console.error('Error fetching registration:', error);
+        logger.error('Error fetching registration:', error);
         res.status(500).json({
             message: 'Error retrieving the registration record',
             error: error instanceof Error ? error.message : 'Unknown error'
@@ -140,7 +140,7 @@ router.get('/admin/registrations/:id/files', authFilter, async (req: Request, re
         res.status(200).json(files);
 
     } catch (error) {
-        console.error('Error in getFiles endpoint:', error);
+        logger.error('Error in getFiles endpoint:', error);
         res.status(500).json({ message: 'Error listing files' });
     }
 });
@@ -161,7 +161,7 @@ router.get('/admin/registrations/:id/files/:filename', authFilter, async (req: R
         }
         res.sendFile(absolutePath, (err) => {
             if (err) {
-                console.error('Error sending file:', err);
+                logger.error('Error sending file:', err);
                 if (!res.headersSent) {
                     res.status(500).send('Error downloading file');
                 }
@@ -169,7 +169,7 @@ router.get('/admin/registrations/:id/files/:filename', authFilter, async (req: R
         });
 
     } catch (error) {
-        console.error('Error in download endpoint:', error);
+        logger.error('Error in download endpoint:', error);
         res.status(500).json({ message: 'Internal server error' });
     }
 });

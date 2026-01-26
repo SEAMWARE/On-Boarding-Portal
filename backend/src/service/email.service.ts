@@ -35,7 +35,7 @@ abstract class BaseMailService implements EmailService {
                 return variables[key] || "";
             });
         } catch (error) {
-            console.error(`Error loading file at ${value}:`, error);
+            logger.error(`Error loading file at ${value}:`, error);
             throw error;
         }
     }
