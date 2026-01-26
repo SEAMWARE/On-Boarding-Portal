@@ -1,4 +1,4 @@
-import { DataSource, Repository, ObjectLiteral, FindOptionsWhere, FindManyOptions } from "typeorm";
+import { DataSource, Repository, ObjectLiteral, FindOptionsWhere, FindManyOptions, QueryRunner } from "typeorm";
 import { PaginatedResult } from "../type/pagination-result";
 
 export interface PaginationOptions<T> {
@@ -10,48 +10,61 @@ export interface PaginationOptions<T> {
 
 export abstract class BaseRepository<T extends ObjectLiteral> {
     protected repository: Repository<T>;
+    protected dataSource: DataSource;
+    protected entityClass: new () => T;
 
     constructor(entity: new () => T, dataSource: DataSource) {
         this.repository = dataSource.getRepository(entity);
+        this.dataSource = dataSource;
+        this.entityClass = entity;
     }
 
-    async save(data: Partial<T>): Promise<T> {
-        const entity = this.repository.create(data as T);
-        return await this.repository.save<T>(entity);
+    async save(data: Partial<T>, qr?: QueryRunner): Promise<T> {
+        const repo = this.getRepo(qr);
+        const entity = repo.create(data as T);
+        return await repo.save<T>(entity);
     }
 
-    async findById(id: any): Promise<T | null> {
-        return await this.repository.findOneBy({ id });
+    async findById(id: any, qr?: QueryRunner): Promise<T | null> {
+        return await this.getRepo(qr).findOneBy({ id });
     }
 
-    async update(id: any, data: Partial<T>): Promise<T | null> {
-        await this.repository.update(id, data);
-        return this.findById(id);
+    async update(id: any, data: Partial<T>, qr?: QueryRunner): Promise<T | null> {
+        await this.getRepo(qr).update(id, data);
+        return this.findById(id, qr);
     }
 
-    async delete(id: any): Promise<boolean> {
-        const result = await this.repository.delete(id);
+    async delete(id: any, qr?: QueryRunner): Promise<boolean> {
+        const result = await this.getRepo(qr).delete(id);
         return result.affected !== 0;
     }
 
-async find(options: PaginationOptions<T>): Promise<PaginatedResult<T>> {
-    const { page = 0, limit = 10, where, order } = options;
+    async find(options: PaginationOptions<T>, qr?: QueryRunner): Promise<PaginatedResult<T>> {
+        const { page = 0, limit = 10, where, order } = options;
 
-    const skip = page * limit;
+        const skip = page * limit;
 
-    const [items, total] = await this.repository.findAndCount({
-        where,
-        order,
-        take: limit,
-        skip: skip
-    } as FindManyOptions<T>);
+        const [items, total] = await this.getRepo(qr).findAndCount({
+            where,
+            order,
+            take: limit,
+            skip: skip
+        } as FindManyOptions<T>);
 
-    return {
-        items,
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit)
-    };
-}
+        return {
+            items,
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit)
+        };
+    }
+
+    transaction(): QueryRunner {
+        return this.dataSource.createQueryRunner();
+    }
+
+    private getRepo(qr?: QueryRunner): Repository<T> {
+        return qr ? qr.manager.getRepository(this.entityClass) : this.repository;
+    }
 }

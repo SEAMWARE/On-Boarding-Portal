@@ -80,28 +80,46 @@ router.get('/admin/registrations/:id', authFilter, async (req: Request, res: Res
 router.put('/admin/registrations/:id', authFilter, async (req: Request, res: Response) => {
     const { id } = req.params;
     const { status, reason } = req.body;
-    const registration = await registrationRepository.updateStatus(id as string, status, reason);
-    if (!registration) {
-        return res.status(404).json({
-            message: `Registration with ID ${id} not found`
-        });
+    const queryRunner = registrationRepository.transaction();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+        const prevRegistration = await registrationRepository.findById(id, queryRunner);
+        if (!prevRegistration) {
+            return res.status(404).json({
+                message: `Registration with ID ${id} not found`
+            });
+        }
+        const registration = (await registrationRepository.updateStatus(id as string, status, reason, queryRunner))!;
+        const response: AdminRegistration = registration!;
+
+        if (registration?.filesPath) {
+            response.files = await storageService.listFiles(registration.filesPath);
+        }
+
+        // Update realm and TIR
+        if (prevRegistration.status !== RegistrationStatus.ACTIVE && status === RegistrationStatus.ACTIVE) {
+            await registrationService.register(registration.did);
+        } else if(prevRegistration.status === RegistrationStatus.ACTIVE && status !== RegistrationStatus.ACTIVE) {
+            await registrationService.unregister(registration.did);
+        }
+
+        queryRunner.commitTransaction();
+        res.status(200).json(response);
+        // TODO should send email first?
+        const data = {
+            requestId: registration.id,
+            status: registration.status
+        }
+        await emailService.sendUpdateEmail(registration.email, data).catch((error) => {
+            logger.warn('Unable to send update email.', error)
+        })
+    } catch(error) {
+        logger.error('Unable to update status.', error);
+        await queryRunner.rollbackTransaction() ;
+    } finally {
+        await queryRunner.release();
     }
-    const response: AdminRegistration = registration;
-    if (registration?.filesPath) {
-        response.files = await storageService.listFiles(registration.filesPath);
-    }
-    if (status === RegistrationStatus.ACTIVE) {
-        await registrationService.register(registration.did);
-    }
-    res.status(200).json(response);
-    // TODO should send email first?
-    const data = {
-        requestId: registration.id,
-        status: registration.status
-    }
-    await emailService.sendUpdateEmail(registration.email, data).catch((error) => {
-        logger.warn('Unable to send update email', error)
-    })
 })
 router.get('/admin/registrations/:id/files', authFilter, async (req: Request, res: Response) => {
     try {

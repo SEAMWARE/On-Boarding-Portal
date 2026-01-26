@@ -10,10 +10,10 @@ class KeycloakService {
     adminClient: KeycloakAdminClient;
     constructor(config: KeycloakConfig) {
         this.config = config;
-        this.adminClient = new KeycloakAdminClient({baseUrl: config.baseUrl})
+        this.adminClient = new KeycloakAdminClient({ baseUrl: config.baseUrl })
     }
     async createRealm(did: string) {
-        const realm = did.replaceAll(':', '_')
+        const realm = this._generateRealmName(did);
         await this._authClient();
         logger.info(`Create realm '${realm}'`)
         await this.adminClient.realms.create({
@@ -24,13 +24,19 @@ class KeycloakService {
         })
     }
 
-    async removeRealm(realm: string) {
+    async removeRealm(did: string) {
         await this._authClient();
+        const realm = this._generateRealmName(did);
         logger.info(`Delete realm '${realm}'`)
-        await this.adminClient.realms.del({realm})
+        await this.adminClient.realms.del({ realm }, { catchNotFound: true })
     }
+
     private async _authClient() {
         await this.adminClient.auth(this.config.auth)
+    }
+
+    private _generateRealmName(did: string) {
+        return did.replaceAll(':', '_');
     }
 }
 
