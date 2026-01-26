@@ -37,3 +37,12 @@ app:
     clientSecret: ''
     scope: openid
     codeChallenge: true
+email:
+  enabled: false
+  from: 'onboarding@seamware.com'
+  update:
+    subject: 'OnBoarding Portal - Registration updated'
+    html: 'file://./templates/update.html'
+  submit:
+    subject: 'OnBoarding Portal - Registration submited'
+    html: 'file://./templates/submit.html'

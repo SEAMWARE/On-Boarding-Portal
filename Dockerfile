@@ -36,6 +36,7 @@ COPY ./frontend/dist/browser ./static
 
 # Copy config
 COPY ./backend/src/config/application.default.yaml /app/application.default.yaml
+COPY ./backend/templates /app/templates
 
 # Default command
 CMD ["node", "index.js"]

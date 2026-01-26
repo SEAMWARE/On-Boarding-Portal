@@ -1,4 +1,5 @@
 import { CorsOptions } from "cors";
+import SMTPPool from "nodemailer/lib/smtp-pool";
 import { DataSourceOptions } from "typeorm";
 
 export interface AppConfig {
@@ -6,6 +7,7 @@ export interface AppConfig {
     logging: Logging
     app: AppCfg
     database: DataSourceOptions;
+    email: EmailConfig;
 }
 
 export interface ServerConfig {
@@ -37,3 +39,21 @@ export interface StorageConfig {
     destFolder: string;
     maxSizeMB: number;
 }
+
+export interface MailTemplate {
+    subject: string;
+    html: string
+}
+export interface BaseEmailConfig {
+    enabled: boolean;
+    from: string;
+    update: MailTemplate
+    submit: MailTemplate
+}
+
+export interface NodemailerConfig extends BaseEmailConfig {
+    type: 'nodemailer';
+    config: SMTPPool | SMTPPool.Options
+}
+
+export  type EmailConfig = NodemailerConfig;

@@ -1,16 +1,16 @@
 import { Router } from "express";
 import { registrationRepository } from "../repository/registration.repository";
-import { sendEmail } from "../service/email.service";
 import { getFilesPath, removeFolder, saveFiles, uploadFiles } from "../middleware/storage.middleware";
 import { logger } from "../service/logger";
 import { isDuplicatedKeyError } from "../type/db-errors";
 import { generateDid } from "../service/did.service";
+import emailService from "../service/email.service";
 
 const router = Router()
 
 router.post('/registrations/submit', uploadFiles('files', { maxCount: 5, allowedTypes: /pdf/ }), async (req, res) => {
-    let filesPath;
-    let {file, ...data} = req.body;
+    let filesPath, registration;
+    let { file, ...data } = req.body;
     try {
         logger.info(`Processing onboarding for: ${data.name}`);
 
@@ -20,18 +20,22 @@ router.post('/registrations/submit', uploadFiles('files', { maxCount: 5, allowed
         logger.debug(`Files received: ${uploadedFiles ? uploadedFiles.length : 0}`);
 
         filesPath = getFilesPath(data.did);
-        const registration = await registrationRepository.save({...data, filesPath });
+        registration = await registrationRepository.save({ ...data, filesPath });
 
         if (uploadedFiles && uploadedFiles.length != 0) {
             filesPath = await saveFiles(data.did, uploadedFiles)
         }
+
 
         res.status(201).json({
             id: registration.id,
             did: registration.did,
             timestamp: new Date().toISOString()
         });
-        sendEmail(data.email);
+        // TODO should send mail first?
+        emailService.sendSubmitEmail(data.email, registration.id).catch((error) => {
+            logger.warn('Unable to submit send email', error);
+        })
     } catch (error) {
         logger.error('Submission Error:', error);
         if (filesPath) {
@@ -42,6 +46,9 @@ router.post('/registrations/submit', uploadFiles('files', { maxCount: 5, allowed
             return
         }
         res.status(500).json({ error: 'Internal Server Error' });
+        if (registration) {
+            await registrationRepository.delete(registration.id)
+        }
     }
 });
 

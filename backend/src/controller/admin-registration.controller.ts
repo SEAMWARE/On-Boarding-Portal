@@ -5,6 +5,8 @@ import { registrationRepository } from "../repository/registration.repository";
 import { PaginationHeader } from "../headers/pagination.headers";
 import { oidcAuthMiddleware } from "../middleware/auth.middleware";
 import { storageService } from "../service/storage.service";
+import emailService from "../service/email.service";
+import { logger } from "../service/logger";
 
 const router = Router()
 
@@ -83,12 +85,19 @@ router.put('/admin/registrations/:id', authFilter, async (req: Request, res: Res
             message: `Registration with ID ${id} not found`
         });
     }
-
     const response: AdminRegistration = registration;
     if (registration?.filesPath) {
         response.files = await storageService.listFiles(registration.filesPath);
     }
     res.status(200).json(response);
+    // TODO should send email first?
+    const data = {
+        requestId: registration.id,
+        status: registration.status
+    }
+    await emailService.sendUpdateEmail(registration.email, data).catch((error) => {
+        logger.warn('Unable to send update email', error)
+    })
 })
 router.get('/admin/registrations/:id/files', authFilter, async (req: Request, res: Response) => {
     try {

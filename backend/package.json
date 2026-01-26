@@ -22,10 +22,10 @@
     "mongodb": "^7.0.0",
     "mssql": "^12.2.0",
     "multer": "^2.0.2",
+    "nodemailer": "^7.0.12",
     "openid-client": "^6.8.1",
     "pg": "^8.17.1",
     "reflect-metadata": "^0.2.2",
-    "tar": "^7.5.2",
     "typeorm": "^0.3.28",
     "winston": "^3.19.0"
   },
@@ -37,6 +37,7 @@
     "@types/js-yaml": "^4.0.9",
     "@types/multer": "^2.0.0",
     "@types/node": "^24.10.4",
+    "@types/nodemailer": "^7.0.5",
     "nodemon": "^3.1.11",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
