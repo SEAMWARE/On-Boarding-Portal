@@ -1,6 +1,6 @@
 import { TrusterIssuer } from "../type/truster-issuer";
 import { configService } from "./config.service";
-import { logger } from "./logger";
+import { externalRequest, logger } from "./logger";
 
 class TirService {
     tirUrl: URL;
@@ -15,6 +15,7 @@ class TirService {
 
     async registerDid(trusterIssuer: TrusterIssuer): Promise<void> {
         logger.info(`Register DID ${trusterIssuer.did}`)
+        const start = process.hrtime();
         try {
             const response = await fetch(this.tirUrl, {
                 method: 'POST',
@@ -23,7 +24,7 @@ class TirService {
                 },
                 body: JSON.stringify(trusterIssuer),
             });
-
+            externalRequest(response, this.tirUrl, 'POST', start);
             if (!response.ok) {
                 if (response.status === 419) {
                     throw new Error(`DID '${trusterIssuer.did}' already registered`)
@@ -37,12 +38,13 @@ class TirService {
     }
 
     async deleteDid(did: string): Promise<boolean> {
+        const start = process.hrtime();
         try {
             logger.info(`Unregister DID ${did}`)
-            const response = await fetch(`${this.tirUrl}/did`, {
+            const response = await fetch(`${this.tirUrl}/${did}`, {
                 method: 'DELETE',
             });
-
+            externalRequest(response, this.tirUrl, 'POST', start);
             if (!response.ok) {
                 logger.debug(`Error removing DID '${did}' ${response.status}: ${response.body}`)
                 return false;

@@ -1,6 +1,6 @@
 import { createLogger, format, transports } from 'winston';
 import { configService } from './config.service';
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response as ExpressResponse, NextFunction } from 'express';
 
 const logLevel = configService.get().logging.level;
 
@@ -27,8 +27,7 @@ export const logger = createLogger({
 });
 
 
-
-export function requestLogger(req: Request, res: Response, next: NextFunction) {
+export function requestLogger(req: Request, res: ExpressResponse, next: NextFunction) {
   const start = process.hrtime();
 
   res.on('finish', () => {
@@ -40,4 +39,11 @@ export function requestLogger(req: Request, res: Response, next: NextFunction) {
   });
 
   next();
+}
+
+
+export function externalRequest(response: Response, url: string | URL, method: string, start: [number, number]) {
+  const durationHr = process.hrtime(start);
+  const durationMs = (durationHr[0] * 1000 + durationHr[1] / 1e6).toFixed(2);
+  logger.info(`Output ${method.toUpperCase()} ${url} ${response.status} ${durationMs}ms`)
 }
