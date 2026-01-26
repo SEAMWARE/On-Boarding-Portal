@@ -6,7 +6,7 @@ import { tirService } from "./tir.service";
 class RegistrationService {
 
     async register(did: string) {
-        await keycloakService.createRealm(did);
+        // await keycloakService.createRealm(did);
         const tirIssuer: TrusterIssuer = {
             did,
             credentials: []
@@ -20,7 +20,7 @@ class RegistrationService {
         }
     }
     async unregister(did: string) {
-        await keycloakService.removeRealm(did);
+        // await keycloakService.removeRealm(did);
         await tirService.deleteDid(did);
     }
 }

@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, signal } from '@angular/core';
-import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -43,7 +43,6 @@ const ANCHOR_SECTIONS: string[] = [
   styleUrl: './submit.scss',
 })
 export class Submit {
-  registrationForm: FormGroup;
   trackingId: string = '';
   isProcessing = signal(false);
   selectedFiles: File[] = [];
@@ -58,12 +57,6 @@ export class Submit {
     private router: Router,
     private route: ActivatedRoute
   ) {
-    this.registrationForm = this.fb.group({
-      email: ['', [Validators.required, Validators.email]],
-      name: ['', Validators.required],
-      did: ['']
-    });
-
     const fragment = this.route.snapshot.fragment;
     this.selectedTabIndex = (fragment ? ANCHOR_SECTIONS.indexOf(fragment) : 0) || 0
 

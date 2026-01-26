@@ -3,7 +3,6 @@ import { registrationRepository } from "../repository/registration.repository";
 import { getFilesPath, removeFolder, saveFiles, uploadFiles } from "../middleware/storage.middleware";
 import { logger } from "../service/logger";
 import { isDuplicatedKeyError } from "../type/db-errors";
-import { generateDid } from "../service/did.service";
 import emailService from "../service/email.service";
 
 const router = Router()
@@ -14,7 +13,6 @@ router.post('/registrations/submit', uploadFiles('files', { maxCount: 5, allowed
     try {
         logger.info(`Processing onboarding for: ${data.name}`);
 
-        data.did = data.did || generateDid();
         const uploadedFiles = req.files as Express.Multer.File[];
 
         logger.debug(`Files received: ${uploadedFiles ? uploadedFiles.length : 0}`);
