@@ -2,7 +2,6 @@ import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateCol
 import { FileMetadata } from "../type/file-metadata";
 
 export enum RegistrationStatus {
-    PENDING = "pending",
     SUBMITTED = "submitted",
     UNDER_REVIEW = "under_review",
     ACTION_REQUIRED = "action_required",
@@ -23,7 +22,7 @@ export class Registration {
     @Column({
         type: "enum",
         enum: RegistrationStatus,
-        default: RegistrationStatus.PENDING
+        default: RegistrationStatus.SUBMITTED
     })
     status!: RegistrationStatus;
 
