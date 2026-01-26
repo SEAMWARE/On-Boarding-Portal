@@ -57,7 +57,7 @@
             <mat-label class="section-label">Attached Documents</mat-label>
             <mat-chip-set class="chip-list">
                 @for(file of registration.files; track file.name) {
-                <mat-chip-row class="preview-chip" (click)="previewFile(file)" matTooltip="Click to preview PDF"
+                <mat-chip-row class="preview-chip" [disabled]="!editable" (click)="previewFile(file)" matTooltip="Click to preview PDF"
                     [matTooltipShowDelay]="500" #chipTooltip="matTooltip"> <mat-icon
                         matChipAvatar>picture_as_pdf</mat-icon>
                     <span class="truncate">{{ file.name }}</span>

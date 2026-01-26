@@ -50,12 +50,10 @@ export class Registration {
     @UpdateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)", onUpdate: "CURRENT_TIMESTAMP(6)" })
     updatedAt?: Date;
 
+    files?: FileMetadata[];
+
     toJSON() {
         const { filesPath, ...registration } = this;
         return registration;
     }
-}
-
-export interface AdminRegistration extends Registration {
-    files?: FileMetadata[];
 }

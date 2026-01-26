@@ -1,5 +1,5 @@
 import { Request, Response, Router } from "express";
-import { AdminRegistration, RegistrationStatus } from "../entity/registration.entity";
+import { RegistrationStatus } from "../entity/registration.entity";
 import { In } from "typeorm";
 import { registrationRepository } from "../repository/registration.repository";
 import { PaginationHeader } from "../headers/pagination.headers";
@@ -35,7 +35,7 @@ router.get('/admin/registrations', authFilter, async (req: Request, res: Respons
         if (result.items) {
             const filePromises = result.items.map(async (reg) => {
                 if (reg.filesPath) {
-                    (reg as AdminRegistration).files = await storageService.listFiles(reg.filesPath);
+                    reg.files = await storageService.listFiles(reg.filesPath);
                 }
             });
             await Promise.all(filePromises);
@@ -61,12 +61,7 @@ router.get('/admin/registrations/:id', authFilter, async (req: Request, res: Res
                 message: `Registration with ID ${id} not found`
             });
         }
-
-        const response: AdminRegistration = registration;
-        if (registration?.filesPath) {
-            response.files = await storageService.listFiles(registration.filesPath);
-        }
-        res.status(200).json(response);
+        res.status(200).json(registration);
 
     } catch (error) {
         logger.error('Error fetching registration:', error);
@@ -91,11 +86,6 @@ router.put('/admin/registrations/:id', authFilter, async (req: Request, res: Res
             });
         }
         const registration = (await registrationRepository.updateStatus(id as string, status, reason, queryRunner))!;
-        const response: AdminRegistration = registration!;
-
-        if (registration?.filesPath) {
-            response.files = await storageService.listFiles(registration.filesPath);
-        }
 
         // Update realm and TIR
         if (prevRegistration.status !== RegistrationStatus.ACTIVE && status === RegistrationStatus.ACTIVE) {
@@ -105,7 +95,7 @@ router.put('/admin/registrations/:id', authFilter, async (req: Request, res: Res
         }
 
         queryRunner.commitTransaction();
-        res.status(200).json(response);
+        res.status(200).json(registration);
         // TODO should send email first?
         const data = {
             requestId: registration.id,
