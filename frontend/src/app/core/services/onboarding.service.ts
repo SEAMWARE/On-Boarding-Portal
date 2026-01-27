@@ -63,7 +63,13 @@ export class OnBoardingService {
     updateRegistration(id: string, data: {did: string, file: File, email: string}): Observable<Registration> {
 
         const url = this._resolveUrl(`${this.submitPath}/${id}`)
-        return this.http.put<Registration>(url, data);
+        const body = new FormData();
+        body.append('email', data.email);
+        body.append('did', data.did);
+        if (data.file) {
+            body.append('files', data.file, data.file.name);
+        }
+        return this.http.put<Registration>(url, body);
     }
 
     getAdminRegistrations(

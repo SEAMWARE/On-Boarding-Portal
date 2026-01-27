@@ -106,7 +106,8 @@ router.put('/admin/registrations/:id', authFilter, async (req: Request, res: Res
         })
     } catch(error) {
         logger.error('Unable to update status.', error);
-        await queryRunner.rollbackTransaction() ;
+        await queryRunner.rollbackTransaction();
+        res.status(500).send({error: 'Error updating status'})
     } finally {
         await queryRunner.release();
     }

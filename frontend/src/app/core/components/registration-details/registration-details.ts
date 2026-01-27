@@ -1,11 +1,11 @@
-import { Component, effect, Input, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, effect, input, model, OnDestroy, OnInit, signal } from '@angular/core';
 import { RegistrationStatus } from '../../types/registration-status';
 import { CommonModule } from '@angular/common';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
-import { FileMetadata, Registration } from '../../types/registration';
+import { Registration } from '../../types/registration';
 import { MatButtonModule } from "@angular/material/button";
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatSelectModule } from '@angular/material/select';
@@ -13,7 +13,6 @@ import { NotificationService } from '../../services/notification';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { OnBoardingService } from '../../services/onboarding.service';
 import { MatDialog } from '@angular/material/dialog';
-import { PdfViewer } from '../pdf-viewer/pdf-viewer';
 import { Subscription } from 'rxjs';
 import { UploadFile } from '../upload-file/upload-file';
 
@@ -36,9 +35,10 @@ import { UploadFile } from '../upload-file/upload-file';
 })
 export class RegistrationDetails implements OnInit, OnDestroy {
 
-  @Input({ required: true }) registration!: Registration;
-  @Input() editable: boolean = false;
+  registration = model.required<Registration>();
+  editable = input<boolean>(false);
 
+  _registration = signal<Registration |null>(null)
   _editting = signal(false);
   statusOptions = Object.values(RegistrationStatus);
   registrationForm!: FormGroup;
@@ -50,7 +50,7 @@ export class RegistrationDetails implements OnInit, OnDestroy {
     private onBoardingService: OnBoardingService,
     private dialog: MatDialog
   ) {
-    if (this.editable) {
+    if (this.editable()) {
       effect(() => {
         if (this.registrationForm) {
           this._editting() ? this.registrationForm.enable() : this.registrationForm.disable();
@@ -68,14 +68,14 @@ export class RegistrationDetails implements OnInit, OnDestroy {
   }
   initForm() {
     this.registrationForm = this.fb.group({
-      status: [this.registration.status],
-      did: [this.registration.did],
-      id: [{ value: this.registration.id, disabled: true }],
-      email: [{ value: this.registration.email, disabled: true }],
-      createdAt: [{ value: this.registration.createdAt, disabled: true }],
-      updatedAt: [{ value: this.registration.updatedAt, disabled: true }],
+      status: [this.registration().status],
+      did: [this.registration().did],
+      id: [{ value: this.registration().id, disabled: true }],
+      email: [{ value: this.registration().email, disabled: true }],
+      createdAt: [{ value: this.registration().createdAt, disabled: true }],
+      updatedAt: [{ value: this.registration().updatedAt, disabled: true }],
       files: [''],
-      reason: [{ value: this.registration?.reason, disabled: true }]
+      reason: [{ value: this.registration()?.reason, disabled: true }]
     });
 
     this.destroy$ = this.registrationForm.get('status')?.valueChanges
@@ -104,10 +104,10 @@ export class RegistrationDetails implements OnInit, OnDestroy {
       this.cancelReview();
       console.log('Pushing updates to backend...', this.registration);
       let { did, files, email } = this.registrationForm.getRawValue();
-      this.onBoardingService.updateRegistration(this.registration.id, { did, file: files, email }).subscribe({
+      this.onBoardingService.updateRegistration(this.registration().id, { did, file: files[0], email }).subscribe({
         next: (resp) => {
           console.log("Update response", resp);
-          this.registration = resp;
+          this.registration.set(resp);
           this.notification.show('Registration updated')
         },
         error: (error) => {
@@ -128,30 +128,12 @@ export class RegistrationDetails implements OnInit, OnDestroy {
 
   canUpdate(): boolean {
     const status = this.registrationForm.get('status')?.value;
-    return this.editable && [RegistrationStatus.SUBMITTED, RegistrationStatus.ACTION_REQUIRED].includes(status)
-  }
-
-  previewFile(file: FileMetadata): void {
-
-    this.onBoardingService.getAdminFile(this.registration.id, file.name).subscribe({
-      next: (blob) => {
-        this.dialog.open(PdfViewer, {
-          data: { blob: blob, title: file.name },
-          maxWidth: '100vw',
-          maxHeight: '100vh',
-          autoFocus: false
-        });
-      },
-      error: (error) => {
-        console.log("Error download file", error);
-        this.notification.error("Error opening file");
-      }
-    })
+    return this.editable() && [RegistrationStatus.SUBMITTED, RegistrationStatus.ACTION_REQUIRED].includes(status)
   }
 
   onFileSelected(files: File[]): void {
     if (files && files.length > 0) {
-      this.registrationForm.patchValue({ files: files[0] });
+      this.registrationForm.patchValue({ files });
       this.registrationForm.get('files')?.markAsDirty();
       this.registrationForm.get('files')?.updateValueAndValidity();
     } else {
@@ -165,6 +147,6 @@ export class RegistrationDetails implements OnInit, OnDestroy {
   }
 
   removeFile(index: number) {
-    this.registration.files?.splice(index, 1);
+    this.registration().files?.splice(index, 1);
   }
 }

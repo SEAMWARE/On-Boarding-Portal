@@ -31,11 +31,13 @@ export class CopyInput {
   @Input() appearance: MatFormFieldAppearance = 'fill'
   @Input() readonly: boolean = true;
   @Input() disabled: boolean = false;
+  @Input() trimText: boolean = true;
   constructor(private clipboard: Clipboard, private notification: NotificationService) { }
 
   copy(): void {
     if (this.value) {
-      this.clipboard.copy(this.value);
+      const copyText = this.trimText ? this.value.trim() : this.value;
+      this.clipboard.copy(copyText);
       this.notification.show(this.notificationText);
     }
   }

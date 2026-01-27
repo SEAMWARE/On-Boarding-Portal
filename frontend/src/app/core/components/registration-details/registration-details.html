@@ -1,12 +1,12 @@
-@if(registration) {
+@if(registration()) {
 <form [formGroup]="registrationForm" (ngSubmit)="saveChanges()" class="detail-container">
     <header class="detail-header">
         <h3>Registration Information</h3>
 
-        @if(editable) {
+        @if(editable()) {
         <mat-chip-set>
-            <mat-chip [attr.status]="registration.status" disabled>
-                {{ registration.status | uppercase }}
+            <mat-chip [attr.status]="registration().status" disabled>
+                {{ prettyStatus(registration().status) | uppercase }}
             </mat-chip>
         </mat-chip-set>
         }
@@ -35,23 +35,23 @@
         @if(!_editting()) {
         <mat-form-field appearance="outline">
             <mat-label>Submission Date</mat-label>
-            <input matInput [value]="registration.createdAt | date:'dd/MM/yyyy HH:mm:ss'" disabled>
+            <input matInput [value]="registration().createdAt | date:'dd/MM/yyyy HH:mm:ss'" disabled>
             <mat-icon matSuffix>calendar_today</mat-icon>
         </mat-form-field>
 
         <mat-form-field appearance="outline">
             <mat-label>Last Update</mat-label>
-            <input matInput [value]="registration.updatedAt | date:'dd/MM/yyyy HH:mm:ss'" disabled>
+            <input matInput [value]="registration().updatedAt | date:'dd/MM/yyyy HH:mm:ss'" disabled>
             <mat-icon matSuffix>update</mat-icon>
         </mat-form-field>
         }
 
-        @if(!_editting() || registration.files?.length) {
+        @if(!_editting() || registration().files?.length) {
         <div class="span-12 files-container">
             <mat-label class="section-label">Attached Documents</mat-label>
             <mat-chip-set class="chip-list">
-                @for(file of registration.files; track file.name) {
-                <mat-chip-row class="file-chip" [disabled]="!editable">
+                @for(file of registration().files; track file.name) {
+                <mat-chip-row class="file-chip" [disabled]="!editable()">
                     <mat-icon matChipAvatar>picture_as_pdf</mat-icon>
                     <span class="truncate">{{ file.name }}</span>
                     @if(_editting()) {

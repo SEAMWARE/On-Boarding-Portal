@@ -4,6 +4,8 @@ import { AppDataSource } from "../service/data.source";
 import { BaseRepository } from "./base.repository";
 import { storageService } from "../service/storage.service";
 
+export type RegistrationUpdate = Partial<Pick<Registration, 'did' | 'filesPath' | 'email'>>
+
 class RegistrationRepository extends BaseRepository<Registration> {
 
     constructor() {
@@ -16,11 +18,14 @@ class RegistrationRepository extends BaseRepository<Registration> {
             registration.files = await storageService.listFiles(registration.filesPath);
         }
         return registration;
-
     }
 
     async updateStatus(id: string, status: RegistrationStatus, reason: string, qr?: QueryRunner): Promise<Registration | null> {
         return super.update(id, { status, reason }, qr)
+    }
+
+    async updateInfo(id: string, data: RegistrationUpdate, qr?: QueryRunner): Promise<Registration | null> {
+        return super.update(id, {...data, status: RegistrationStatus.SUBMITTED}, qr)
     }
 }
 
