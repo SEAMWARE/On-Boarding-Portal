@@ -44,10 +44,10 @@ export class Registration {
 
     @Column({ nullable: true, type: 'text'})
     reason?: string;
-    @CreateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)" })
+    @CreateDateColumn({ type: "timestamptz" })
     createdAt?: Date;
 
-    @UpdateDateColumn({ type: "timestamp", default: () => "CURRENT_TIMESTAMP(6)", onUpdate: "CURRENT_TIMESTAMP(6)" })
+    @UpdateDateColumn({ type: "timestamptz" })
     updatedAt?: Date;
 
     files?: FileMetadata[];
