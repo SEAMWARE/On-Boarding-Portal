@@ -60,6 +60,12 @@ export class OnBoardingService {
         return this.http.get<any>(url, { headers });
     }
 
+    updateRegistration(id: string, data: {did: string, file: File, email: string}): Observable<Registration> {
+
+        const url = this._resolveUrl(`${this.submitPath}/${id}`)
+        return this.http.put<Registration>(url, data);
+    }
+
     getAdminRegistrations(
         pagination: PaginationQuery & { status?: string | string[] } = { page: 0, limit: 10 }
     ): Observable<PaginatedResponse<Registration>> {
@@ -82,6 +88,7 @@ export class OnBoardingService {
 
         return this.http.get<PaginatedResponse<Registration>>(url, { params });
     }
+
     getAdminRegistration(id: string) {
         const url = this._resolveUrl(`${this.registrations}/${id}`);
 

@@ -1,5 +1,4 @@
 import { Component, OnInit, signal } from '@angular/core';
-import { RegistrationDetails } from '../../../core/components/registration-details/registration-details';
 import { Registration } from '../../../core/types/registration';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { Toolbar } from "../../../core/components/toolbar/toolbar";
@@ -8,10 +7,11 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { OnBoardingService } from '../../../core/services/onboarding.service';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
+import { AdminRegistrationDetails } from '../../../core/components/admin-registration-details/admin-registration-details';
 
 @Component({
   selector: 'app-review',
-  imports: [RegistrationDetails, MatProgressBarModule, MatCardModule, Toolbar, MatIconModule, MatButtonModule],
+  imports: [AdminRegistrationDetails, MatProgressBarModule, MatCardModule, Toolbar, MatIconModule, MatButtonModule],
   templateUrl: './review.html',
   styleUrl: './review.scss',
 })

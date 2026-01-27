@@ -15,7 +15,7 @@
                 @if(isLoading()){
                 <mat-progress-bar mode="indeterminate" style="margin-top: 16px;" />
                 }@else if (registration) {
-                <app-registration-details [editable]="true" [registration]="registration" />
+                <app-admin-registration-details [registration]="registration"/>
                 } @else {
                 <div class="error-container mat-elevation-z2">
                     <mat-icon class="error-icon">search_off</mat-icon>

@@ -12,13 +12,13 @@ import { MatSelectModule } from '@angular/material/select';
 import { NotificationService } from '../../services/notification';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { OnBoardingService } from '../../services/onboarding.service';
+import { conditionalValidator } from '../../validators/conditional-validator';
 import { MatDialog } from '@angular/material/dialog';
 import { PdfViewer } from '../pdf-viewer/pdf-viewer';
 import { Subscription } from 'rxjs';
-import { UploadFile } from '../upload-file/upload-file';
 
 @Component({
-  selector: 'app-registration-details',
+  selector: 'app-admin-registration-details',
   imports: [CommonModule,
     MatFormFieldModule,
     MatInputModule,
@@ -28,16 +28,14 @@ import { UploadFile } from '../upload-file/upload-file';
     ReactiveFormsModule,
     MatSelectModule,
     MatChipsModule,
-    MatTooltipModule,
-    UploadFile
+    MatTooltipModule
   ],
-  templateUrl: './registration-details.html',
-  styleUrl: './registration-details.scss',
+  templateUrl: './admin-registration-details.html',
+  styleUrl: './admin-registration-details.scss',
 })
-export class RegistrationDetails implements OnInit, OnDestroy {
+export class AdminRegistrationDetails implements OnInit, OnDestroy {
 
   @Input({ required: true }) registration!: Registration;
-  @Input() editable: boolean = false;
 
   _editting = signal(false);
   statusOptions = Object.values(RegistrationStatus);
@@ -50,13 +48,11 @@ export class RegistrationDetails implements OnInit, OnDestroy {
     private onBoardingService: OnBoardingService,
     private dialog: MatDialog
   ) {
-    if (this.editable) {
-      effect(() => {
-        if (this.registrationForm) {
-          this._editting() ? this.registrationForm.enable() : this.registrationForm.disable();
-        }
-      })
-    };
+    effect(() => {
+      if (this.registrationForm) {
+        this._editting() ? this.registrationForm.enable() : this.registrationForm.disable();
+      }
+    })
   }
 
   ngOnInit() {
@@ -75,7 +71,7 @@ export class RegistrationDetails implements OnInit, OnDestroy {
       createdAt: [{ value: this.registration.createdAt, disabled: true }],
       updatedAt: [{ value: this.registration.updatedAt, disabled: true }],
       files: [''],
-      reason: [{ value: this.registration?.reason, disabled: true }]
+      reason: [this.registration?.reason, [conditionalValidator(() => this.needRevision())]]
     });
 
     this.destroy$ = this.registrationForm.get('status')?.valueChanges
@@ -89,9 +85,7 @@ export class RegistrationDetails implements OnInit, OnDestroy {
   }
   enableReview(): void {
     this._editting.set(true);
-    this.registrationForm.get('email')?.enable();
-    this.registrationForm.get('did')?.enable();
-    this.registrationForm.get('files')?.enable();
+    this.registrationForm.enable();
   }
 
   cancelReview(): void {
@@ -103,8 +97,9 @@ export class RegistrationDetails implements OnInit, OnDestroy {
     if (this.registrationForm.valid && this.registrationForm.dirty) {
       this.cancelReview();
       console.log('Pushing updates to backend...', this.registration);
-      let { did, files, email } = this.registrationForm.getRawValue();
-      this.onBoardingService.updateRegistration(this.registration.id, { did, file: files, email }).subscribe({
+      let { status, reason } = this.registrationForm.getRawValue();
+      reason = this.needRevision() ? reason : null;
+      this.onBoardingService.updateAdminRegistration(this.registration.id, { status, reason }).subscribe({
         next: (resp) => {
           console.log("Update response", resp);
           this.registration = resp;
@@ -126,11 +121,6 @@ export class RegistrationDetails implements OnInit, OnDestroy {
     return false;
   }
 
-  canUpdate(): boolean {
-    const status = this.registrationForm.get('status')?.value;
-    return this.editable && [RegistrationStatus.SUBMITTED, RegistrationStatus.ACTION_REQUIRED].includes(status)
-  }
-
   previewFile(file: FileMetadata): void {
 
     this.onBoardingService.getAdminFile(this.registration.id, file.name).subscribe({
@@ -149,22 +139,7 @@ export class RegistrationDetails implements OnInit, OnDestroy {
     })
   }
 
-  onFileSelected(files: File[]): void {
-    if (files && files.length > 0) {
-      this.registrationForm.patchValue({ files: files[0] });
-      this.registrationForm.get('files')?.markAsDirty();
-      this.registrationForm.get('files')?.updateValueAndValidity();
-    } else {
-      this.registrationForm.patchValue({ file: null });
-      this.registrationForm.get('files')?.updateValueAndValidity();
-    }
-  }
-
   prettyStatus(status: string) {
     return status.split("_").join(" ");
-  }
-
-  removeFile(index: number) {
-    this.registration.files?.splice(index, 1);
   }
 }

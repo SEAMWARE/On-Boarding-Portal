@@ -3,17 +3,23 @@
     <header class="detail-header">
         <h3>Registration Information</h3>
 
-        @if(editable) {
-        <mat-chip-set>
-            <mat-chip [attr.status]="registration.status" disabled>
-                {{ registration.status | uppercase }}
-            </mat-chip>
-        </mat-chip-set>
-        }
+        <mat-form-field appearance="outline">
+            <mat-label>Register Status</mat-label>
+            <mat-select formControlName="status">
+                @for (status of statusOptions; track status) {
+                <mat-option [value]="status">{{ prettyStatus(status) | titlecase}}</mat-option>
+                }
+            </mat-select>
+        </mat-form-field>
 
     </header>
 
     <div class="grid-layout">
+        <mat-form-field appearance="outline" class="span-12">
+            <mat-label>Decentralized Identifier (DID)</mat-label>
+            <input matInput formControlName="did">
+        </mat-form-field>
+
         <mat-form-field appearance="outline" class="span-12">
             <mat-label>Registration ID</mat-label>
             <input matInput formControlName="id">
@@ -21,18 +27,11 @@
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="span-12">
-            <mat-label>Decentralized Identifier (DID)</mat-label>
-            <input matInput formControlName="did">
-        </mat-form-field>
-
-
-        <mat-form-field appearance="outline" class="span-12">
             <mat-label>Administrative Email</mat-label>
             <input matInput formControlName="email">
             <mat-icon matSuffix>email</mat-icon>
         </mat-form-field>
 
-        @if(!_editting()) {
         <mat-form-field appearance="outline">
             <mat-label>Submission Date</mat-label>
             <input matInput [value]="registration.createdAt | date:'dd/MM/yyyy HH:mm:ss'" disabled>
@@ -44,37 +43,32 @@
             <input matInput [value]="registration.updatedAt | date:'dd/MM/yyyy HH:mm:ss'" disabled>
             <mat-icon matSuffix>update</mat-icon>
         </mat-form-field>
-        }
 
-        @if(!_editting() || registration.files?.length) {
+        @if(registration.files && registration.files.length > 0) {
         <div class="span-12 files-container">
             <mat-label class="section-label">Attached Documents</mat-label>
             <mat-chip-set class="chip-list">
                 @for(file of registration.files; track file.name) {
-                <mat-chip-row class="file-chip" [disabled]="!editable">
+                <mat-chip-row class="preview-chip" (click)="previewFile(file)" matTooltip="Click to preview PDF"
+                    [matTooltipShowDelay]="500" #chipTooltip="matTooltip">
                     <mat-icon matChipAvatar>picture_as_pdf</mat-icon>
                     <span class="truncate">{{ file.name }}</span>
-                    @if(_editting()) {
-                    <button matChipRemove matTooltip="Click to remove" [matTooltipShowDelay]="500"
-                        (click)="removeFile($index)">
-                        <mat-icon>cancel</mat-icon>
-                    </button>
-                    }
                 </mat-chip-row>
                 }
             </mat-chip-set>
         </div>
-        } @else {
-        <app-upload-file label="Signed Acceptance Agreement" accept="application/pdf" [maxFileSizeMB]="5"
-            [multiple]="false" (filesChanged)="onFileSelected($event)" class="span-12"/>
         }
         @if(needRevision()) {
         <mat-form-field appearance="outline" class="span-12">
-            <mat-label>{{ 'Registration needs review. Please update the information to resolve the indicated issue.'
-                }}</mat-label>
-            <textarea matInput formControlName="reason" cdkTextareaAutosize #autosize="cdkTextareaAutosize"
-                cdkAutosizeMinRows="3" cdkAutosizeMaxRows="5"></textarea>
+            <mat-label>{{ 'Reason for the revision' }}</mat-label>
+            <textarea matInput formControlName="reason" placeholder="Provide information about the action to be taken"
+                cdkTextareaAutosize #autosize="cdkTextareaAutosize" cdkAutosizeMinRows="3"
+                cdkAutosizeMaxRows="5"></textarea>
             <mat-icon matSuffix>comment</mat-icon>
+
+            @if(_editting()) {
+            <mat-hint>Explain why the submission needs to be reviewed</mat-hint>
+            }
             @if (registrationForm.get('reason')?.hasError('required')) {
             <mat-error>
                 A reason is <strong>required</strong> when the status needs review.
@@ -84,7 +78,6 @@
         }
     </div>
 
-    @if(canUpdate()) {
     <div class="actions">
         @if(!_editting()) {
         <button type="button" matButton="filled" color="accent" (click)="enableReview()">
@@ -102,6 +95,5 @@
         </button>
         }
     </div>
-    }
 </form>
 }

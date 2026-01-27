@@ -19,33 +19,6 @@ $main-bg-color: #f9f9f9;
     }
 }
 
-mat-chip {
-
-    &[status="pending"],
-    &[status="submitted"] {
-        --mat-chip-elevated-disabled-container-color: #eff6ff;
-    }
-
-    &[status="under_review"] {
-        --mat-chip-elevated-disabled-container-color: #fffbeb;
-        color: #b45309;
-    }
-
-    &[status="action_required"],
-    &[status="rejected"]
-     {
-        --mat-chip-elevated-disabled-container-color: #fef2f2;
-        --mat-chip-disabled-label-text-color: #b91c1c;
-        border: 1px solid #fee2e2;
-    }
-
-    &[status="active"] {
-        --mat-chip-elevated-disabled-container-color: #f0fdf4;
-        --mat-chip-disabled-label-text-color: #15803d;
-        border: 1px solid #dcfce7;
-    }
-}
-
 
 .actions {
   display: flex;
@@ -99,7 +72,7 @@ mat-chip {
     gap: 8px;
   }
 
-  .file-chip {
+  .preview-chip {
     cursor: pointer !important;
     transition: all 0.2s ease-in-out;
     max-width: 300px;
