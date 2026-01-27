@@ -73,9 +73,9 @@ router.get('/registrations/submit/:id', async (req, res) => {
 })
 router.put('/registrations/submit/:id',uploadFiles('files', { maxCount: 5, allowedTypes: /pdf/ }), async (req, res) => {
     const id = req.params.id as string;
-    const { email, did } = req.body;
+    const data = req.body as RegistrationUpdate;
     const uploadedFiles = req.files as Express.Multer.File[];
-    if (!email || !did || !uploadFiles) {
+    if (!data || !uploadFiles) {
         return res.status(400).send({error: 'Email, DID or file field is required'})
     }
     const allowedStatus = [RegistrationStatus.ACTION_REQUIRED, RegistrationStatus.SUBMITTED]
@@ -95,18 +95,15 @@ router.put('/registrations/submit/:id',uploadFiles('files', { maxCount: 5, allow
             });
         }
 
-        const data: RegistrationUpdate = {}
-        if (email) {
-            data.email = email
-        }
-        if (did) {
-            data.did = did;
-            data.filesPath = storageService.getFilesPath(did);
+        if (data.did) {
+            data.filesPath = storageService.getFilesPath(data.did);
+        } else {
+            delete data.filesPath;
         }
 
         // This can cause error if update fails
-        if (uploadedFiles?.length > 0 || did !== prevRegistration.did) {
-            await storageService.updateFiles(prevRegistration.did, did, uploadedFiles)
+        if (uploadedFiles?.length > 0 || data.did !== prevRegistration.did) {
+            await storageService.updateFiles(prevRegistration.did, data.did || prevRegistration.did, uploadedFiles)
         }
 
         const registration = (await registrationRepository.updateInfo(id, data, queryRunner))!;

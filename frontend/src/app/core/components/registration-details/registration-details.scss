@@ -4,18 +4,11 @@ $main-bg-color: #f9f9f9;
     background: $main-bg-color;
     border-radius: 12px;
     border: 1px solid #e0e0e0;
-
     .detail-header {
         display: flex;
-        justify-content: space-between;
+        justify-content: end;
         align-items: center;
         margin-bottom: 24px;
-
-        h3 {
-            margin: 0;
-            color: var(--mat-sys-on-primary-fixed);
-            font-weight: 500;
-        }
     }
 }
 
@@ -76,7 +69,7 @@ mat-chip {
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 6px;
   box-sizing: border-box;
-  padding: 0 18px 8px 18px;
+  padding: 0 18px 15px 18px;
   .section-label {
     position: relative;
     top: -10px;

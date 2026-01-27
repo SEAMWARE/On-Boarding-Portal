@@ -17,6 +17,9 @@ export interface RegistrationInfo {
     country: string;
 }
 
+export const REGISTRATION_UPDATE_KEYS = ['address', 'city', 'country', 'did', 'email', 'name', 'postCode', 'taxId']
+
+export type RegistrationUpdate = Partial<Pick<Registration, 'address' | 'city' | 'country' | 'did' | 'email' | 'name' | 'postCode' | 'taxId'>>
 @Injectable({
     providedIn: 'root',
 })
@@ -41,7 +44,7 @@ export class OnBoardingService {
 
         const headers = this._getHeaders();
         const body = new FormData();
-        Object.entries(formValues).forEach( ([key, value]) => {
+        Object.entries(formValues).forEach(([key, value]) => {
             if (value) {
                 body.append(key, value)
             }
@@ -60,14 +63,17 @@ export class OnBoardingService {
         return this.http.get<any>(url, { headers });
     }
 
-    updateRegistration(id: string, data: {did: string, file: File, email: string}): Observable<Registration> {
+    updateRegistration(id: string, formValues: RegistrationUpdate, file?: File): Observable<Registration> {
 
         const url = this._resolveUrl(`${this.submitPath}/${id}`)
         const body = new FormData();
-        body.append('email', data.email);
-        body.append('did', data.did);
-        if (data.file) {
-            body.append('files', data.file, data.file.name);
+        Object.entries(formValues).forEach(([key, value]) => {
+            if (value) {
+                body.append(key, value)
+            }
+        })
+        if (file && file instanceof Blob) {
+            body.append('files', file, file.name);
         }
         return this.http.put<Registration>(url, body);
     }
@@ -105,10 +111,10 @@ export class OnBoardingService {
 
         const url = this._resolveUrl(`${this.registrations}/${id}/files/${filename}`)
 
-        return this.http.get(url,{ responseType: 'blob' })
+        return this.http.get(url, { responseType: 'blob' })
     }
 
-    updateAdminRegistration(id: string, data: {status: RegistrationStatus, reason: string}): Observable<Registration> {
+    updateAdminRegistration(id: string, data: { status: RegistrationStatus, reason: string }): Observable<Registration> {
 
         data.status = data.status || '';
         const url = this._resolveUrl(`${this.registrations}/${id}`)

@@ -4,7 +4,7 @@ import { AppDataSource } from "../service/data.source";
 import { BaseRepository } from "./base.repository";
 import { storageService } from "../service/storage.service";
 
-export type RegistrationUpdate = Partial<Pick<Registration, 'did' | 'filesPath' | 'email'>>
+export type RegistrationUpdate = Partial<Pick<Registration, 'address' | 'city' | 'country' | 'did' | 'email' | 'name' | 'postCode' | 'taxId' | 'filesPath'>>
 
 class RegistrationRepository extends BaseRepository<Registration> {
 

@@ -7,14 +7,14 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { Registration } from '../../types/registration';
 import { MatButtonModule } from "@angular/material/button";
-import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatSelectModule } from '@angular/material/select';
 import { NotificationService } from '../../services/notification';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { OnBoardingService } from '../../services/onboarding.service';
-import { MatDialog } from '@angular/material/dialog';
+import { OnBoardingService, REGISTRATION_UPDATE_KEYS } from '../../services/onboarding.service';
 import { Subscription } from 'rxjs';
 import { UploadFile } from '../upload-file/upload-file';
+import { MatTabsModule } from '@angular/material/tabs';
 
 @Component({
   selector: 'app-registration-details',
@@ -28,7 +28,8 @@ import { UploadFile } from '../upload-file/upload-file';
     MatSelectModule,
     MatChipsModule,
     MatTooltipModule,
-    UploadFile
+    UploadFile,
+    MatTabsModule
   ],
   templateUrl: './registration-details.html',
   styleUrl: './registration-details.scss',
@@ -39,7 +40,7 @@ export class RegistrationDetails implements OnInit, OnDestroy {
   editable = input<boolean>(false);
   readonly editingChange = output<boolean>();
 
-  _registration = signal<Registration |null>(null)
+  _registration = signal<Registration | null>(null)
   _editting = signal(false);
   statusOptions = Object.values(RegistrationStatus);
   registrationForm!: FormGroup;
@@ -48,8 +49,7 @@ export class RegistrationDetails implements OnInit, OnDestroy {
   constructor(
     private fb: FormBuilder,
     private notification: NotificationService,
-    private onBoardingService: OnBoardingService,
-    private dialog: MatDialog
+    private onBoardingService: OnBoardingService
   ) {
     if (this.editable()) {
       effect(() => {
@@ -75,8 +75,15 @@ export class RegistrationDetails implements OnInit, OnDestroy {
       email: [{ value: this.registration().email, disabled: true }],
       createdAt: [{ value: this.registration().createdAt, disabled: true }],
       updatedAt: [{ value: this.registration().updatedAt, disabled: true }],
-      files: [''],
-      reason: [{ value: this.registration()?.reason, disabled: true }]
+      files: [this.registration().files],
+      reason: [{ value: this.registration()?.reason, disabled: true }],
+
+      name: [this.registration().name, Validators.required],
+      taxId: [this.registration().taxId, Validators.required],
+      address: [this.registration().address, Validators.required],
+      city: [this.registration().city, Validators.required],
+      postCode: [this.registration().postCode, Validators.required],
+      country: [this.registration().country, Validators.required]
     });
 
     this.destroy$ = this.registrationForm.get('status')?.valueChanges
@@ -91,26 +98,32 @@ export class RegistrationDetails implements OnInit, OnDestroy {
   enableReview(): void {
     this._editting.set(true);
     this.editingChange.emit(true);
-    this.registrationForm.get('email')?.enable();
-    this.registrationForm.get('did')?.enable();
-    this.registrationForm.get('files')?.enable();
+    REGISTRATION_UPDATE_KEYS.forEach(field => this.registrationForm.get(field)?.enable())
   }
 
-  cancelReview(): void {
+  cancelReview(resetForm = true): void {
     this._editting.set(false);
     this.editingChange.emit(false);
+    if (resetForm) {
+      this.registrationForm.patchValue(this.registration());
+    }
     this.registrationForm.disable();
   }
 
   saveChanges(): void {
     if (this.registrationForm.valid && this.registrationForm.dirty) {
-      this.cancelReview();
-      console.log('Pushing updates to backend...', this.registration);
-      let { did, files, email } = this.registrationForm.getRawValue();
-      this.onBoardingService.updateRegistration(this.registration().id, { did, file: files[0], email }).subscribe({
+      this.cancelReview(false);
+      const {files, ...data} = this.getDirtyValues(this.registrationForm)
+      console.log('Pushing updates to backend...', data);
+      REGISTRATION_UPDATE_KEYS.forEach(field => {
+        data[field] = this.registrationForm.get(field)?.getRawValue();
+      })
+
+      this.onBoardingService.updateRegistration(this.registration().id, data, files?.[0]).subscribe({
         next: (resp) => {
           console.log("Update response", resp);
           this.registration.set(resp);
+          this.registrationForm.patchValue(resp);
           this.notification.show('Registration updated')
         },
         error: (error) => {
@@ -137,12 +150,11 @@ export class RegistrationDetails implements OnInit, OnDestroy {
   onFileSelected(files: File[]): void {
     if (files && files.length > 0) {
       this.registrationForm.patchValue({ files });
-      this.registrationForm.get('files')?.markAsDirty();
-      this.registrationForm.get('files')?.updateValueAndValidity();
     } else {
       this.registrationForm.patchValue({ file: null });
-      this.registrationForm.get('files')?.updateValueAndValidity();
     }
+    this.registrationForm.get('files')?.markAsDirty();
+    this.registrationForm.get('files')?.updateValueAndValidity();
   }
 
   prettyStatus(status: string) {
@@ -150,6 +162,24 @@ export class RegistrationDetails implements OnInit, OnDestroy {
   }
 
   removeFile(index: number) {
-    this.registration().files?.splice(index, 1);
+    const currentFiles = [...(this.registrationForm.get('files')?.value || [])];
+    currentFiles.splice(index, 1);
+
+    this.registrationForm.patchValue({ files: currentFiles });
+    this.registrationForm.get('files')?.markAsDirty();
   }
+
+  private getDirtyValues(form: FormGroup) {
+    const dirtyValues: any = {};
+
+    Object.keys(form.controls).forEach(key => {
+      const control = form.get(key);
+      if (control?.dirty) {
+        dirtyValues[key] = control.value;
+      }
+    });
+
+    return dirtyValues;
+  }
+
 }

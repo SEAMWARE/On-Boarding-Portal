@@ -1,88 +1,135 @@
 @if(registration()) {
 <form [formGroup]="registrationForm" (ngSubmit)="saveChanges()" class="detail-container">
-    <header class="detail-header">
-        <h3>Registration Information</h3>
 
-        @if(editable()) {
-        <mat-chip-set>
-            <mat-chip [attr.status]="registration().status" disabled>
-                {{ prettyStatus(registration().status) | uppercase }}
-            </mat-chip>
-        </mat-chip-set>
-        }
+    <mat-tab-group animationDuration="400ms">
 
-    </header>
-
-    <div class="grid-layout">
-        <mat-form-field appearance="outline" class="span-12">
-            <mat-label>Registration ID</mat-label>
-            <input matInput formControlName="id">
-            <mat-icon matSuffix>fingerprint</mat-icon>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" class="span-12">
-            <mat-label>Decentralized Identifier (DID)</mat-label>
-            <input matInput formControlName="did">
-        </mat-form-field>
-
-
-        <mat-form-field appearance="outline" class="span-12">
-            <mat-label>Administrative Email</mat-label>
-            <input matInput formControlName="email">
-            <mat-icon matSuffix>email</mat-icon>
-        </mat-form-field>
-
-        @if(!_editting()) {
-        <mat-form-field appearance="outline">
-            <mat-label>Submission Date</mat-label>
-            <input matInput [value]="registration().createdAt | date:'dd/MM/yyyy HH:mm:ss'" disabled>
-            <mat-icon matSuffix>calendar_today</mat-icon>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline">
-            <mat-label>Last Update</mat-label>
-            <input matInput [value]="registration().updatedAt | date:'dd/MM/yyyy HH:mm:ss'" disabled>
-            <mat-icon matSuffix>update</mat-icon>
-        </mat-form-field>
-        }
-
-        @if(!_editting() || registration().files?.length) {
-        <div class="span-12 files-container">
-            <mat-label class="section-label">Attached Documents</mat-label>
-            <mat-chip-set class="chip-list">
-                @for(file of registration().files; track file.name) {
-                <mat-chip-row class="file-chip" [disabled]="!editable()">
-                    <mat-icon matChipAvatar>picture_as_pdf</mat-icon>
-                    <span class="truncate">{{ file.name }}</span>
-                    @if(_editting()) {
-                    <button matChipRemove matTooltip="Click to remove" [matTooltipShowDelay]="500"
-                        (click)="removeFile($index)">
-                        <mat-icon>cancel</mat-icon>
-                    </button>
+        <mat-tab>
+            <ng-template mat-tab-label>
+                <span>SUMMARY</span>
+            </ng-template>
+            <div class="grid-layout">
+                <mat-form-field appearance="outline" class="span-9">
+                    <mat-label>Registration ID</mat-label>
+                    <input matInput formControlName="id">
+                    <mat-icon matSuffix>fingerprint</mat-icon>
+                </mat-form-field>
+                <div class="detail-header span-3">
+                    @if(editable()) {
+                    <mat-chip-set>
+                        <mat-chip [attr.status]="registration().status" disabled>
+                            {{ prettyStatus(registration().status) | uppercase }}
+                        </mat-chip>
+                    </mat-chip-set>
                     }
-                </mat-chip-row>
+                </div>
+
+                <mat-form-field appearance="outline" class="span-6">
+                    <mat-label>Decentralized Identifier (DID)</mat-label>
+                    <input matInput formControlName="did">
+                </mat-form-field>
+
+
+                <mat-form-field appearance="outline" class="span-6">
+                    <mat-label>Administrative Email</mat-label>
+                    <input matInput formControlName="email">
+                    <mat-icon matSuffix>email</mat-icon>
+                </mat-form-field>
+
+                @if(!_editting()) {
+                <mat-form-field appearance="outline">
+                    <mat-label>Submission Date</mat-label>
+                    <input matInput [value]="registration().createdAt | date:'dd/MM/yyyy HH:mm:ss'" disabled>
+                    <mat-icon matSuffix>calendar_today</mat-icon>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                    <mat-label>Last Update</mat-label>
+                    <input matInput [value]="registration().updatedAt | date:'dd/MM/yyyy HH:mm:ss'" disabled>
+                    <mat-icon matSuffix>update</mat-icon>
+                </mat-form-field>
                 }
-            </mat-chip-set>
-        </div>
-        } @else {
-        <app-upload-file label="Signed Acceptance Agreement" accept="application/pdf" [maxFileSizeMB]="5"
-            [multiple]="false" (filesChanged)="onFileSelected($event)" class="span-12"/>
-        }
-        @if(needRevision()) {
-        <mat-form-field appearance="outline" class="span-12">
-            <mat-label>{{ 'Registration needs review. Please update the information to resolve the indicated issue.'
-                }}</mat-label>
-            <textarea matInput formControlName="reason" cdkTextareaAutosize #autosize="cdkTextareaAutosize"
-                cdkAutosizeMinRows="3" cdkAutosizeMaxRows="5"></textarea>
-            <mat-icon matSuffix>comment</mat-icon>
-            @if (registrationForm.get('reason')?.hasError('required')) {
-            <mat-error>
-                A reason is <strong>required</strong> when the status needs review.
-            </mat-error>
-            }
-        </mat-form-field>
-        }
-    </div>
+
+                @if(!_editting() || registrationForm.get('files')?.value?.length > 0) {
+                <div class="span-12 files-container">
+                    <mat-label class="section-label">Attached Documents</mat-label>
+                    <mat-chip-set class="chip-list">
+                        @for(file of registrationForm.get('files')?.value; track file.name) {
+                        <mat-chip-row class="file-chip" [disabled]="!editable()">
+                            <mat-icon matChipAvatar>picture_as_pdf</mat-icon>
+                            <span class="truncate">{{ file.name }}</span>
+                            @if(_editting()) {
+                            <button matChipRemove matTooltip="Click to remove" [matTooltipShowDelay]="500"
+                                (click)="removeFile($index)">
+                                <mat-icon>cancel</mat-icon>
+                            </button>
+                            }
+                        </mat-chip-row>
+                        }
+                    </mat-chip-set>
+                </div>
+                } @else {
+                <app-upload-file label="Signed Acceptance Agreement" accept="application/pdf" [maxFileSizeMB]="5"
+                    [multiple]="false" (filesChanged)="onFileSelected($event)" class="span-12" />
+                }
+                @if(needRevision()) {
+                <mat-form-field appearance="outline" class="span-12">
+                    <mat-label>{{ 'Registration needs review. Please update the information to resolve the indicated
+                        issue.'
+                        }}</mat-label>
+                    <textarea matInput formControlName="reason" cdkTextareaAutosize #autosize="cdkTextareaAutosize"
+                        cdkAutosizeMinRows="3" cdkAutosizeMaxRows="5"></textarea>
+                    <mat-icon matSuffix>comment</mat-icon>
+                    @if (registrationForm.get('reason')?.hasError('required')) {
+                    <mat-error>
+                        A reason is <strong>required</strong> when the status needs review.
+                    </mat-error>
+                    }
+                </mat-form-field>
+                }
+            </div>
+        </mat-tab>
+        <mat-tab>
+            <ng-template mat-tab-label>
+                <span>COMPANY INFORMATION</span>
+            </ng-template>
+            <div class="grid-layout">
+                <mat-form-field appearance="outline" class="span-8">
+                    <mat-label>Official Registered Name</mat-label>
+                    <input matInput formControlName="name">
+                    <mat-icon matSuffix>corporate_fare</mat-icon>
+                </mat-form-field>
+                <mat-form-field appearance="outline" class="span-4">
+                    <mat-label>Tax Identifier (VAT/CIF)</mat-label>
+                    <input matInput formControlName="taxId">
+                    <mat-icon matSuffix>badge</mat-icon>
+                </mat-form-field>
+                <mat-form-field appearance="outline" class="span-12">
+                    <mat-label>Full Address</mat-label>
+                    <input matInput formControlName="address">
+                    <mat-icon matSuffix>place</mat-icon>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="span-4">
+                    <mat-label>City</mat-label>
+                    <input matInput formControlName="city">
+                    <mat-icon matSuffix>location_city</mat-icon>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="span-4">
+                    <mat-label>Country</mat-label>
+                    <input matInput formControlName="country">
+                    <mat-icon matSuffix>public</mat-icon>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="span-4">
+                    <mat-label>Postal Code</mat-label>
+                    <input matInput formControlName="postCode">
+                    <mat-icon matSuffix>local_post_office</mat-icon>
+                </mat-form-field>
+            </div>
+        </mat-tab>
+    </mat-tab-group>
+
 
     @if(canUpdate()) {
     <div class="actions">

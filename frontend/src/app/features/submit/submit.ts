@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, signal } from '@angular/core';
-import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -52,7 +52,6 @@ export class Submit {
   _editing = signal(false);
 
   constructor(
-    private fb: FormBuilder,
     private notification: NotificationService,
     private onBoardingService: OnBoardingService,
     private router: Router,
