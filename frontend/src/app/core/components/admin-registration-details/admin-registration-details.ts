@@ -1,4 +1,4 @@
-import { Component, effect, Input, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, effect, model, OnDestroy, OnInit, signal } from '@angular/core';
 import { RegistrationStatus } from '../../types/registration-status';
 import { CommonModule } from '@angular/common';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -16,6 +16,7 @@ import { conditionalValidator } from '../../validators/conditional-validator';
 import { MatDialog } from '@angular/material/dialog';
 import { PdfViewer } from '../pdf-viewer/pdf-viewer';
 import { Subscription } from 'rxjs';
+import { MatTabsModule } from '@angular/material/tabs';
 
 @Component({
   selector: 'app-admin-registration-details',
@@ -28,15 +29,15 @@ import { Subscription } from 'rxjs';
     ReactiveFormsModule,
     MatSelectModule,
     MatChipsModule,
-    MatTooltipModule
+    MatTooltipModule,
+    MatTabsModule
   ],
   templateUrl: './admin-registration-details.html',
   styleUrl: './admin-registration-details.scss',
 })
 export class AdminRegistrationDetails implements OnInit, OnDestroy {
 
-  @Input({ required: true }) registration!: Registration;
-
+  registration = model.required<Registration>();
   _editting = signal(false);
   statusOptions = Object.values(RegistrationStatus);
   registrationForm!: FormGroup;
@@ -50,7 +51,7 @@ export class AdminRegistrationDetails implements OnInit, OnDestroy {
   ) {
     effect(() => {
       if (this.registrationForm) {
-        this._editting() ? this.registrationForm.enable() : this.registrationForm.disable();
+        this._editting() ? this.enableReview() : this.cancelReview();
       }
     })
   }
@@ -64,14 +65,20 @@ export class AdminRegistrationDetails implements OnInit, OnDestroy {
   }
   initForm() {
     this.registrationForm = this.fb.group({
-      status: [this.registration.status],
-      did: [this.registration.did],
-      id: [{ value: this.registration.id, disabled: true }],
-      email: [{ value: this.registration.email, disabled: true }],
-      createdAt: [{ value: this.registration.createdAt, disabled: true }],
-      updatedAt: [{ value: this.registration.updatedAt, disabled: true }],
+      status: [this.registration().status],
+      did: [{value: this.registration().did, disabled: true}],
+      id: [{ value: this.registration().id, disabled: true }],
+      email: [{ value: this.registration().email, disabled: true }],
+      createdAt: [{ value: this.registration().createdAt, disabled: true }],
+      updatedAt: [{ value: this.registration().updatedAt, disabled: true }],
       files: [''],
-      reason: [this.registration?.reason, [conditionalValidator(() => this.needRevision())]]
+      reason: [this.registration().reason, [conditionalValidator(() => this.needRevision())]],
+      name: [{value: this.registration().name, disabled: true}],
+      taxId: [{value: this.registration().taxId, disabled: true}],
+      address: [{value: this.registration().address, disabled: true}],
+      city: [{value: this.registration().city, disabled: true}],
+      postCode: [{value: this.registration().postCode, disabled: true}],
+      country: [{value: this.registration().country, disabled: true}]
     });
 
     this.destroy$ = this.registrationForm.get('status')?.valueChanges
@@ -85,7 +92,9 @@ export class AdminRegistrationDetails implements OnInit, OnDestroy {
   }
   enableReview(): void {
     this._editting.set(true);
-    this.registrationForm.enable();
+
+    this.registrationForm.get('status')?.enable();
+    this.registrationForm.get('reason')?.enable();
   }
 
   cancelReview(): void {
@@ -99,10 +108,10 @@ export class AdminRegistrationDetails implements OnInit, OnDestroy {
       console.log('Pushing updates to backend...', this.registration);
       let { status, reason } = this.registrationForm.getRawValue();
       reason = this.needRevision() ? reason : null;
-      this.onBoardingService.updateAdminRegistration(this.registration.id, { status, reason }).subscribe({
+      this.onBoardingService.updateAdminRegistration(this.registration().id, { status, reason }).subscribe({
         next: (resp) => {
           console.log("Update response", resp);
-          this.registration = resp;
+          this.registration.set(resp);
           this.notification.show('Registration updated')
         },
         error: (error) => {
@@ -123,7 +132,7 @@ export class AdminRegistrationDetails implements OnInit, OnDestroy {
 
   previewFile(file: FileMetadata): void {
 
-    this.onBoardingService.getAdminFile(this.registration.id, file.name).subscribe({
+    this.onBoardingService.getAdminFile(this.registration().id, file.name).subscribe({
       next: (blob) => {
         this.dialog.open(PdfViewer, {
           data: { blob: blob, title: file.name },
