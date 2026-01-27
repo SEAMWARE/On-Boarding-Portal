@@ -1,4 +1,4 @@
-import { Component, effect, input, model, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, effect, input, model, OnDestroy, OnInit, output, signal } from '@angular/core';
 import { RegistrationStatus } from '../../types/registration-status';
 import { CommonModule } from '@angular/common';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -37,6 +37,7 @@ export class RegistrationDetails implements OnInit, OnDestroy {
 
   registration = model.required<Registration>();
   editable = input<boolean>(false);
+  readonly editingChange = output<boolean>();
 
   _registration = signal<Registration |null>(null)
   _editting = signal(false);
@@ -89,6 +90,7 @@ export class RegistrationDetails implements OnInit, OnDestroy {
   }
   enableReview(): void {
     this._editting.set(true);
+    this.editingChange.emit(true);
     this.registrationForm.get('email')?.enable();
     this.registrationForm.get('did')?.enable();
     this.registrationForm.get('files')?.enable();
@@ -96,6 +98,7 @@ export class RegistrationDetails implements OnInit, OnDestroy {
 
   cancelReview(): void {
     this._editting.set(false);
+    this.editingChange.emit(false);
     this.registrationForm.disable();
   }
 

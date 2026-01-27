@@ -32,6 +32,7 @@
                             @if(isProcessing()){
                             <mat-progress-bar mode="indeterminate" style="margin-top: 16px;"></mat-progress-bar>
                             }
+                            @if(!_editing()) {
                             <mat-form-field appearance="outline" style="width: 100%; margin-top: 24px;">
                                 <mat-label>Application Tracking ID</mat-label>
                                 <input matInput [(ngModel)]="trackingId">
@@ -39,8 +40,11 @@
                                     <mat-icon>search</mat-icon>
                                 </button>
                             </mat-form-field>
+                            }
+
                             @if(trackedRegistration) {
-                            <app-registration-details [registration]="trackedRegistration" [editable]="true"/>
+                            <app-registration-details (editingChange)="_editing.set($event)"
+                                [registration]="trackedRegistration" [editable]="true" />
                             }
                         </div>
                     </div>

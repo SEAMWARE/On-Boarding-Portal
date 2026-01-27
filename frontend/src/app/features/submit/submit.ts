@@ -49,6 +49,7 @@ export class Submit {
   registrationId = '';
   trackedRegistration: any;
   selectedTabIndex = 0;
+  _editing = signal(false);
 
   constructor(
     private fb: FormBuilder,
