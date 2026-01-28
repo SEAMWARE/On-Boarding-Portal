@@ -48,7 +48,10 @@ service:
 ingress:
   enabled: false
   className: ""
-  annotations: {}
+  annotations:
+    # Change it if allowed file size is bigger
+    nginx.ingress.kubernetes.io/proxy-body-size: 8m
+    nginx.ingress.kubernetes.io/proxy-buffer-size: 16k
     # kubernetes.io/ingress.class: nginx
     # kubernetes.io/tls-acme: "true"
   hosts:
