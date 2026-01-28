@@ -26,14 +26,47 @@
 
                             <div
                                 style="background-color:#f8f9fa;border-radius:6px;padding:20px;margin:25px 0;border-left:4px solid #3f51b5">
-                                <p style="margin:0;color:#777;font-size:14px">Registration ID:</p>
-                                <p style="margin:5px 0 0 0;color:#333;font-weight:bold;font-family:monospace">
-                                    {{registrationId}}</p>
+                                <p
+                                    style="margin:0;color:#777;font-size:12px;text-transform:uppercase;letter-spacing:0.5px">
+                                    Registration ID</p>
+                                <p style="margin:5px 0 15px 0;color:#333;font-size:14px">
+                                    {{registration.id}}
+                                </p>
 
-                                <p style="margin:20px 0 0 0;color:#777;font-size:14px">New status:</p>
-                                <p style="margin:5px 0 0 0;color:#333;font-weight:bold">
-                                    {{status}}</p>
+                                <hr style="border:0;border-top:1px solid #e0e0e0;margin:15px 0">
+
+                                <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                    <tr>
+                                        <td width="45%">
+                                            <p style="margin:0;color:#777;font-size:12px">Previous Status</p>
+                                            <p
+                                                style="margin:5px 0 0 0;color:#888;font-weight:bold;text-decoration:line-through">
+                                                {{previousState}}
+                                            </p>
+                                        </td>
+                                        <td width="10%" align="center" style="vertical-align:middle;padding-top:15px">
+                                            <span style="color:#3f51b5;font-size:20px">→</span>
+                                        </td>
+                                        <td width="45%" style="padding-left:10px">
+                                            <p style="margin:0;color:#777;font-size:12px">New Status</p>
+                                            <p style="margin:5px 0 0 0;color:#3f51b5;font-weight:bold;font-size:16px">
+                                                {{registration.status}}
+                                            </p>
+                                        </td>
+                                    </tr>
+                                </table>
                             </div>
+
+                            <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                <tr>
+                                    <td align="center" style="padding: 10px 0;">
+                                        <a href="{{serverOrigin}}/submit?id={{registration.id}}#search" target="_blank"
+                                            style="background-color: #3f51b5; color: #ffffff; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block; font-size: 16px;">
+                                            See more information
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
                         </td>
                     </tr>
                     <tr>

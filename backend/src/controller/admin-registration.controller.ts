@@ -8,6 +8,7 @@ import { storageService } from "../service/storage.service";
 import emailService from "../service/email.service";
 import { logger } from "../service/logger";
 import { registrationService } from "../service/registration.service";
+import { MailContext } from "../type/main-context";
 
 const router = Router()
 
@@ -102,7 +103,12 @@ router.put('/admin/registrations/:id', authFilter, async (req: Request, res: Res
             status: registration.status
         }
         try {
-            await emailService.sendUpdateEmail(registration.email, data)
+            const mailContext: MailContext = {
+                registration,
+                previousState: prevRegistration.status,
+                serverOrigin: (req as any).serverOrigin
+            }
+            await emailService.sendUpdateEmail(registration.email, mailContext)
         } catch(error){
             logger.warn('Unable to send update email.', error)
         }

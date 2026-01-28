@@ -12,6 +12,7 @@ import registrationController from './controller/registration.controller';
 import adminRegistrationController from './controller/admin-registration.controller';
 
 import cookieParser from 'cookie-parser';
+import { forwardedMiddleware } from './middleware/forwarded.middleware';
 
 
 const appServer = express();
@@ -27,7 +28,7 @@ appServer.use(requestLogger);
 appServer.use(express.static(angularDistPath));
 appServer.set('trust proxy', true);
 appServer.use(cookieParser())
-
+appServer.use(forwardedMiddleware);
 
 // Health check route
 appServer.get('/health/live', (req, res) => {

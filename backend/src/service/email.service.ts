@@ -5,22 +5,22 @@ import { resolve } from "path";
 import { readFileSync } from "fs";
 import nodemailer, { Transporter } from 'nodemailer';
 import SMTPPool from "nodemailer/lib/smtp-pool";
-import { RegistrationStatus } from "../entity/registration.entity";
+import { MailContext } from "../type/main-context";
 
 const emailConfig = configService.get().email
 
 interface EmailService {
 
-    sendSubmitEmail(email: string, registrationId: string): Promise<void>;
-    sendUpdateEmail(email: string, registration: {registrationId: string, status: RegistrationStatus}): Promise<void>;
+    sendSubmitEmail(email: string, mailContext: MailContext): Promise<void>;
+    sendUpdateEmail(email: string, mailContext: MailContext): Promise<void>;
 }
 
 abstract class BaseMailService implements EmailService {
 
-    abstract sendSubmitEmail(email: string, registrationId: string): Promise<void>;
-    abstract sendUpdateEmail(email: string, registration: {registrationId: string, status: RegistrationStatus}): Promise<void>;
+    abstract sendSubmitEmail(email: string, mailContext: MailContext): Promise<void>;
+    abstract sendUpdateEmail(email: string, mailContext: MailContext): Promise<void>;
 
-    _getTemplate(value: string, variables: Record<string, string> = {}): string {
+    _getTemplate(value: string, mailContext: MailContext): string {
         if (!value.startsWith("file://")) {
             return value;
         }
@@ -31,14 +31,23 @@ abstract class BaseMailService implements EmailService {
 
             const content = readFileSync(absolutePath, 'utf-8');
 
-            return content.replace(/\{\{(\w+)\}\}/g, (_, key) => {
-                return variables[key] || "";
-            });
+            return content.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_, key) =>
+                this.getValueByPath(mailContext, key)
+            );
         } catch (error) {
             logger.error(`Error loading file at ${value}:`, error);
             throw error;
         }
     }
+    private getValueByPath(context: MailContext, path: string) {
+        if (!path) return "";
+
+        const result = path.split('.').reduce((acc, part) => {
+            return (acc && acc[part] !== undefined) ? acc[part] : undefined;
+        }, context as any);
+
+        return result !== undefined && result !== null ? result : "";
+    };
 }
 
 class NodemailerEmailService extends BaseMailService {
@@ -51,8 +60,8 @@ class NodemailerEmailService extends BaseMailService {
         this.transport = nodemailer.createTransport(emailConfig.config)
     }
 
-    async sendSubmitEmail(email: string, registrationId: string): Promise<void> {
-        const template = this._getTemplate(this.emailConfig.submit.html, {registrationId})
+    async sendSubmitEmail(email: string, mailContext: MailContext): Promise<void> {
+        const template = this._getTemplate(this.emailConfig.submit.html, mailContext)
         await this.transport.sendMail({
             from: this.emailConfig.from,
             to: email,
@@ -61,8 +70,8 @@ class NodemailerEmailService extends BaseMailService {
         })
     }
 
-    async sendUpdateEmail(email: string, registration: {registrationId: string, status: RegistrationStatus}): Promise<void> {
-        const template = this._getTemplate(this.emailConfig.update.html, registration)
+    async sendUpdateEmail(email: string, mailContext: MailContext): Promise<void> {
+        const template = this._getTemplate(this.emailConfig.update.html, mailContext)
         await this.transport.sendMail({
             from: this.emailConfig.from,
             to: email,
@@ -74,11 +83,11 @@ class NodemailerEmailService extends BaseMailService {
 
 class DisabledMailService extends BaseMailService {
 
-    sendSubmitEmail(email: string, registrationId: string): Promise<void> {
+    sendSubmitEmail(email: string, mailContext: MailContext): Promise<void> {
         logger.debug('Mail service is disabeld')
         return Promise.resolve();
     }
-    sendUpdateEmail(email: string, registration: {registrationId: string, status: RegistrationStatus}): Promise<void> {
+    sendUpdateEmail(email: string, mailContext: MailContext): Promise<void> {
         logger.debug('Mail service is disabeld')
         return Promise.resolve();
     }

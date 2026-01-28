@@ -6,6 +6,7 @@ import emailService from "../service/email.service";
 import { RegistrationStatus } from "../entity/registration.entity";
 import { storageService } from "../service/storage.service";
 import { uploadFiles } from "../middleware/storage.middleware";
+import { MailContext } from "../type/main-context";
 
 const router = Router()
 
@@ -32,7 +33,11 @@ router.post('/registrations/submit', uploadFiles('files', { maxCount: 5, allowed
             timestamp: new Date().toISOString()
         });
         // TODO should send mail first?
-        emailService.sendSubmitEmail(data.email, registration.id).catch((error) => {
+        const mailContext: MailContext = {
+            registration,
+            serverOrigin: (req as any).serverOrigin
+        }
+        emailService.sendSubmitEmail(data.email, mailContext).catch((error) => {
             logger.warn('Unable to submit send email', error);
         })
     } catch (error) {
