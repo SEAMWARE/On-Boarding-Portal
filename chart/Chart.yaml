@@ -1,0 +1,12 @@
+apiVersion: v2
+name: onboarding-portal
+description: A Helm chart for the OnBoarding Portal
+type: application
+version: 1.0.0
+appVersion: 1.0.0
+maintainers:
+  - name: "Miguel Ortega"
+    email: "migue.orega@seamware.com"
+keywords:
+  - onboarding
+  - portal

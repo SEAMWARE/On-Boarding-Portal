@@ -6,3 +6,6 @@ backend/src/config/application.yaml
 .angular
 static
 files
+Chart.lock
+/values/
+/templates/
