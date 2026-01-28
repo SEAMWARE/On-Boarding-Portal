@@ -12,6 +12,8 @@ import { CopyInput } from '../copy-input/copy-input';
 import { OnBoardingService, RegistrationInfo } from '../../services/onboarding.service';
 import { NotificationService } from '../../services/notification';
 import { STEPPER_GLOBAL_OPTIONS } from '@angular/cdk/stepper';
+import { ServerConfigService } from '../../services/server-config';
+import { MatTooltip } from "@angular/material/tooltip";
 
 @Component({
   selector: 'app-registration-form',
@@ -31,8 +33,9 @@ import { STEPPER_GLOBAL_OPTIONS } from '@angular/cdk/stepper';
     MatIconModule,
     MatProgressBarModule,
     UploadFile,
-    CopyInput
-  ],
+    CopyInput,
+    MatTooltip
+],
   templateUrl: './registration-form.html',
   styleUrl: './registration-form.scss',
 })
@@ -41,6 +44,7 @@ export class RegistrationForm {
   isProcessing = signal<boolean>(false);
   registrationId?: string;
 
+  pdfDocumentUrl: string;
   contactForm: FormGroup;
   orgForm: FormGroup;
   legalForm: FormGroup;
@@ -48,8 +52,10 @@ export class RegistrationForm {
   constructor(
     private fb: FormBuilder,
     private onBoardingService: OnBoardingService,
-    private notification: NotificationService
+    private notification: NotificationService,
+    config: ServerConfigService
   ) {
+    this.pdfDocumentUrl = config.getProperty('documentToSignUrl');
     this.contactForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
       did: ['', [Validators.required, Validators.pattern(/^did:[a-z0-9]+:[a-zA-Z0-9\.\-_%:]+$/)]]

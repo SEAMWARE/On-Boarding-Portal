@@ -85,12 +85,9 @@
         </mat-step>
         <mat-step [stepControl]="legalForm" errorMessage="Required">
             <ng-template matStepLabel>Signed Document</ng-template>
-
-            <div class="legal-upload-container" style="margin-top: 20px;">
+            <p>Read the following <a class="documentPdfLink" matTooltip="Open acceptance agreement" matTooltipShowDelay="1500" [href]="pdfDocumentUrl" target="_blank">document</a> and upload it signed.</p>
                 <app-upload-file label="Signed Acceptance Agreement" accept="application/pdf" [maxFileSizeMB]="5"
                     [multiple]="false" (filesChanged)="onFileSelected($event)" />
-            </div>
-
             <div class="actions-footer">
                 @if(isProcessing()) {
                 <mat-progress-bar mode="indeterminate"></mat-progress-bar>

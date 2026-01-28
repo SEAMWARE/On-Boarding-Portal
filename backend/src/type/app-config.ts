@@ -10,6 +10,7 @@ export interface AppConfig {
     app: AppCfg
     database: DataSourceOptions;
     email: EmailConfig;
+    documentToSignUrl: string;
 }
 
 export interface ServerConfig {
