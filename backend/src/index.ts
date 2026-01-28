@@ -30,8 +30,27 @@ appServer.use(cookieParser())
 
 
 // Health check route
-appServer.get('/', (_req, res) => {
-  res.send('Server is running!');
+appServer.get('/health/live', (req, res) => {
+  res.status(200).json({
+    status: 'ALIVE',
+    timestamp: new Date().toISOString()
+  });
+});
+
+
+appServer.get('/health/ready', async (req, res) => {
+  try {
+    const isDatabaseReady = (await initializeDatabase()).isInitialized;
+    if (isDatabaseReady) {
+      res.status(200).json({ status: 'READY' });
+    } else {
+      res.status(503).json({ status: 'NOT_READY', reason: 'Database connection failed' });
+    }
+  } catch(error) {
+    logger.error('Error checking database status', error);
+    res.status(503).json({ status: 'NOT_READY', reason: 'Database connection failed' });
+  }
+
 });
 
 // login

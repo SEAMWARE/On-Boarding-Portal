@@ -35,7 +35,11 @@ export function requestLogger(req: Request, res: ExpressResponse, next: NextFunc
     const durationMs = (durationHr[0] * 1000 + durationHr[1] / 1e6).toFixed(2);
 
     const status = res.statusCode;
-    logger.info(`${req.method} ${req.originalUrl} ${status} ${durationMs}ms`);
+    if (req.originalUrl.includes('/health')) {
+      logger.debug(`${req.method} ${req.originalUrl} ${status} ${durationMs}ms`);
+    } else {
+      logger.info(`${req.method} ${req.originalUrl} ${status} ${durationMs}ms`);
+    }
   });
 
   next();
