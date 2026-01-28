@@ -98,12 +98,14 @@ router.put('/admin/registrations/:id', authFilter, async (req: Request, res: Res
         res.status(200).json(registration);
         // TODO should send email first?
         const data = {
-            requestId: registration.id,
+            registrationId: registration.id,
             status: registration.status
         }
-        await emailService.sendUpdateEmail(registration.email, data).catch((error) => {
+        try {
+            await emailService.sendUpdateEmail(registration.email, data)
+        } catch(error){
             logger.warn('Unable to send update email.', error)
-        })
+        }
     } catch(error) {
         logger.error('Unable to update status.', error);
         await queryRunner.rollbackTransaction();

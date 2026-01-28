@@ -43,6 +43,7 @@ app:
   tir: {}
 email:
   enabled: false
+  type: 'nodemailer'
   from: 'onboarding@seamware.com'
   update:
     subject: 'OnBoarding Portal - Registration updated'

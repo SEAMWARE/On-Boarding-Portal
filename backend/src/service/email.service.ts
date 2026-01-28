@@ -11,14 +11,14 @@ const emailConfig = configService.get().email
 
 interface EmailService {
 
-    sendSubmitEmail(email: string, requestId: string): Promise<void>;
-    sendUpdateEmail(email: string, registration: {requestId: string, status: RegistrationStatus}): Promise<void>;
+    sendSubmitEmail(email: string, registrationId: string): Promise<void>;
+    sendUpdateEmail(email: string, registration: {registrationId: string, status: RegistrationStatus}): Promise<void>;
 }
 
 abstract class BaseMailService implements EmailService {
 
-    abstract sendSubmitEmail(email: string, requestId: string): Promise<void>;
-    abstract sendUpdateEmail(email: string, registration: {requestId: string, status: RegistrationStatus}): Promise<void>;
+    abstract sendSubmitEmail(email: string, registrationId: string): Promise<void>;
+    abstract sendUpdateEmail(email: string, registration: {registrationId: string, status: RegistrationStatus}): Promise<void>;
 
     _getTemplate(value: string, variables: Record<string, string> = {}): string {
         if (!value.startsWith("file://")) {
@@ -51,8 +51,8 @@ class NodemailerEmailService extends BaseMailService {
         this.transport = nodemailer.createTransport(emailConfig.config)
     }
 
-    async sendSubmitEmail(email: string, requestId: string): Promise<void> {
-        const template = this._getTemplate(this.emailConfig.submit.html, {requestId})
+    async sendSubmitEmail(email: string, registrationId: string): Promise<void> {
+        const template = this._getTemplate(this.emailConfig.submit.html, {registrationId})
         await this.transport.sendMail({
             from: this.emailConfig.from,
             to: email,
@@ -61,7 +61,7 @@ class NodemailerEmailService extends BaseMailService {
         })
     }
 
-    async sendUpdateEmail(email: string, registration: {requestId: string, status: RegistrationStatus}): Promise<void> {
+    async sendUpdateEmail(email: string, registration: {registrationId: string, status: RegistrationStatus}): Promise<void> {
         const template = this._getTemplate(this.emailConfig.update.html, registration)
         await this.transport.sendMail({
             from: this.emailConfig.from,
@@ -74,11 +74,11 @@ class NodemailerEmailService extends BaseMailService {
 
 class DisabledMailService extends BaseMailService {
 
-    sendSubmitEmail(email: string, requestId: string): Promise<void> {
+    sendSubmitEmail(email: string, registrationId: string): Promise<void> {
         logger.debug('Mail service is disabeld')
         return Promise.resolve();
     }
-    sendUpdateEmail(email: string, registration: {requestId: string, status: RegistrationStatus}): Promise<void> {
+    sendUpdateEmail(email: string, registration: {registrationId: string, status: RegistrationStatus}): Promise<void> {
         logger.debug('Mail service is disabeld')
         return Promise.resolve();
     }
