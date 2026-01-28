@@ -123,7 +123,7 @@ spec:
           persistentVolumeClaim:
             claimName: {{ .Values.persistence.existingClaim }}
         {{- else if .Values.persistence.create }}
-        - name: data:
+        - name: data
           persistentVolumeClaim:
             claimName: {{ include "onboarding.fullname" . }}-pvc
         {{- end }}
