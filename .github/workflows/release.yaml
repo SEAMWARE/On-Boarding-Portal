@@ -33,7 +33,7 @@ jobs:
 
       - name: Set version output
         id: out
-        run: echo "::set-output name=version::$(echo ${VERSION:-latest})"
+        run: echo "version=${VERSION:-latest}" >> $GITHUB_OUTPUT
 
   # image build&push
   build-and-push:
