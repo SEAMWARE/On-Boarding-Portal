@@ -58,7 +58,7 @@ export class RegistrationForm {
     this.pdfDocumentUrl = config.getProperty('documentToSignUrl');
     this.contactForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
-      did: ['', [Validators.required, Validators.pattern(/^did:[a-z0-9]+:[a-zA-Z0-9\.\-_%:]+$/)]]
+      did: ['', [Validators.pattern(/^did:[a-z0-9]+:[a-zA-Z0-9\.\-_%:]+$/)]]
     });
 
     this.orgForm = this.fb.group({

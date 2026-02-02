@@ -40,8 +40,14 @@ app:
     scope: openid
     codeChallenge: true
   keycloak:
+    realmName: master
     grantType: password
     clientId: 'admin-cli'
+    realmNameLength: 36
+    defaultRealmConfig: {}
+    additionalClientScopes: []
+    keys:
+      curveType: P-256
   tir: {}
 email:
   enabled: false

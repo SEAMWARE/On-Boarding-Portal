@@ -7,6 +7,7 @@ import { RegistrationStatus } from "../entity/registration.entity";
 import { storageService } from "../service/storage.service";
 import { uploadFiles } from "../middleware/storage.middleware";
 import { MailContext } from "../type/main-context";
+import { keycloakService } from "../service/keycloak.service";
 
 const router = Router()
 
@@ -20,6 +21,11 @@ router.post('/registrations/submit', uploadFiles('files', { maxCount: 5, allowed
 
         logger.debug(`Files received: ${uploadedFiles ? uploadedFiles.length : 0}`);
 
+        if (!data.did) {
+            const did = keycloakService.createDidRealm();
+            data.did = did;
+            data.didGenerated = true;
+        }
         filesPath = storageService.getFilesPath(data.did);
         registration = await registrationRepository.save({ ...data, filesPath });
 

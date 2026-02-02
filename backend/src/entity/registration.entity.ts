@@ -46,6 +46,8 @@ export class Registration {
     @Column({ nullable: true })
     filesPath?: string;
 
+    @Column({ default: false })
+    didGenerated!: boolean
     @Column({ nullable: true, type: 'text' })
     reason?: string;
     @CreateDateColumn({ type: DATE_COLUMN_TYPE })

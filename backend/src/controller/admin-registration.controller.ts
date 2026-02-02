@@ -125,9 +125,9 @@ router.put('/admin/registrations/:id', authFilter, async (req: Request, res: Res
 
         // Update realm and TIR
         if (prevRegistration.status !== RegistrationStatus.ACTIVE && status === RegistrationStatus.ACTIVE) {
-            await registrationService.register(registration.did);
+            await registrationService.register(registration.did, registration.didGenerated);
         } else if (prevRegistration.status === RegistrationStatus.ACTIVE && status !== RegistrationStatus.ACTIVE) {
-            await registrationService.unregister(registration.did);
+            await registrationService.unregister(registration.did, registration.didGenerated);
         }
 
         await queryRunner.commitTransaction();

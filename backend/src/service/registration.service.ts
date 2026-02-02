@@ -5,8 +5,10 @@ import { tirService } from "./tir.service";
 
 class RegistrationService {
 
-    async register(did: string) {
-        // await keycloakService.createRealm(did);
+    async register(did: string, createRealm: boolean = false) {
+        if (createRealm) {
+            await keycloakService.createRealm(did);
+        }
         const tirIssuer: TrusterIssuer = {
             did,
             credentials: []
@@ -15,12 +17,16 @@ class RegistrationService {
             await tirService.registerDid(tirIssuer);
         } catch(error) {
             logger.info('Remove realm because register DID failed');
-            await keycloakService.removeRealm(did);
+            if (createRealm) {
+                await keycloakService.removeRealm(did);
+            }
             throw error;
         }
     }
-    async unregister(did: string) {
-        // await keycloakService.removeRealm(did);
+    async unregister(did: string, removeRealm: boolean = false) {
+        if (removeRealm) {
+            await keycloakService.removeRealm(did);
+        }
         await tirService.deleteDid(did);
     }
 }
