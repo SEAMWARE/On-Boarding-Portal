@@ -6,6 +6,7 @@ import RealmRepresentation from "@keycloak/keycloak-admin-client/lib/defs/realmR
 import crypto from 'crypto';
 import { didService } from "./did.service";
 import { DOLLAR_REGEX, TemplateService } from "./template.service";
+import { Registration } from "../entity/registration.entity";
 
 interface RealmContext {
     DID: string;
@@ -30,7 +31,7 @@ class KeycloakService {
         return didService.generateDid(realm);
 
     }
-    async createRealm(did: string): Promise<string> {
+    async createRealm({did, name}: Registration): Promise<string> {
         const realm = didService.getRealmFromDid(did);
         logger.info(`Create realm '${realm}'`)
         const context: RealmContext = {
@@ -45,7 +46,7 @@ class KeycloakService {
             components: {
                 "org.keycloak.keys.KeyProvider": [this._generateKeyProvider(this.config.keys.curveType)]
             },
-            displayName: did
+            displayName: `Realm for '${name}'`
         }
         await this._authClient();
         const { realmName } = await this.adminClient.realms.create(config as RealmRepresentation)
