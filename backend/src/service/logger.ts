@@ -17,7 +17,7 @@ export const logger = createLogger({
       let coloredLevel = levelStr;
       if (COLORS[level]) coloredLevel = `${COLORS[level]}${levelStr}\x1b[0m`;
 
-      const content = stack || message;
+      const content = stack ? `${message}: ${stack}` : message;
 
       const metaData = Object.keys(meta).length ? `\n${JSON.stringify(meta, null, 2)}` : '';
 
@@ -25,6 +25,8 @@ export const logger = createLogger({
     })
   ),
   transports: [new transports.Console()],
+  exceptionHandlers: [new transports.Console()],
+  rejectionHandlers: [new transports.Console()]
 });
 
 
