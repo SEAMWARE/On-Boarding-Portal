@@ -3,27 +3,28 @@ import { configService } from './config.service';
 import { Request, Response as ExpressResponse, NextFunction } from 'express';
 
 const logLevel = configService.get().logging.level;
-
+const COLORS: Record<string, string> = {
+  error: '\x1b[31m', warn: '\x1b[33m', info: '\x1b[36m', debug: '\x1b[32m'
+};
 export const logger = createLogger({
   level: logLevel,
   format: format.combine(
     format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS' }),
-    format.printf(({ timestamp, level, message, ...meta }) => {
+    format.errors({ stack: true }),
+    format.printf(({ timestamp, level, message, stack, ...meta }) => {
       const levelStr = level.toUpperCase();
-      const metaString = Object.keys(meta).length ? JSON.stringify(meta) : '';
+
       let coloredLevel = levelStr;
-      switch (level) {
-        case 'error': coloredLevel = `\x1b[31m${levelStr}\x1b[0m`; break;
-        case 'warn': coloredLevel = `\x1b[33m${levelStr}\x1b[0m`; break;
-        case 'info': coloredLevel = `\x1b[36m${levelStr}\x1b[0m`; break;
-        case 'debug': coloredLevel = `\x1b[32m${levelStr}\x1b[0m`; break;
-      }
-      return `${timestamp} [${coloredLevel}]: ${message} ${metaString}`;
+      if (COLORS[level]) coloredLevel = `${COLORS[level]}${levelStr}\x1b[0m`;
+
+      const content = stack || message;
+
+      const metaData = Object.keys(meta).length ? `\n${JSON.stringify(meta, null, 2)}` : '';
+
+      return `${timestamp} [${coloredLevel}]: ${content} ${metaData}`;
     })
   ),
-  transports: [
-    new transports.Console(),
-  ],
+  transports: [new transports.Console()],
 });
 
 
