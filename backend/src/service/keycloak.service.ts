@@ -39,15 +39,12 @@ class KeycloakService {
             REALM: realm,
             ID: realm
         }
-        const config = {
-            ...this._gerDefaultConfig(context),
-            id: realm,
-            realm,
-            components: {
-                "org.keycloak.keys.KeyProvider": [this._generateKeyProvider(this.config.keys.curveType)]
-            },
-            displayName: `Realm for '${name}'`
+        let config = {...this._gerDefaultConfig(context), id: realm, realm, displayName: `Realm for '${name}'`}
+        config.components = {
+            ...config.components,
+            "org.keycloak.keys.KeyProvider": this._generateKeyProvider(this.config.keys.curveType)
         }
+
         await this._authClient();
         const { realmName } = await this.adminClient.realms.create(config as RealmRepresentation)
         logger.info(`Created realm '${realm}'`)
@@ -98,7 +95,7 @@ class KeycloakService {
     }
 
     private _generateKeyProvider(curve: string): any {
-        return {
+        return [{
             name: 'ec-key',
             providerId: 'ecdsa-generated',
             config: {
@@ -108,7 +105,7 @@ class KeycloakService {
                 priority: ["0"],
                 enabled: ["true"]
             }
-        }
+        }]
     }
 
     private _gerDefaultConfig(context: RealmContext): Omit<RealmRepresentation, 'realm' | 'id'> {
