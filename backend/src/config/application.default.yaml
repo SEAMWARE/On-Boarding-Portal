@@ -44,8 +44,135 @@ app:
     grantType: password
     clientId: 'admin-cli'
     realmNameLength: 36
-    defaultRealmConfig: {}
-    additionalClientScopes: []
+    adminPasswordLength: 30
+    adminEmailLifespan: 72h
+    adminUserConfig:
+      enabled: true
+      username: admin
+      emailVerified: false
+      clientRoles:
+        realm-management:
+          - manage-users
+          - query-groups
+          - query-users
+          - view-users
+        account:
+          - manage-account
+          - view-groups
+          - view-profile
+      realmRoles: []
+      requiredActions:
+        - VERIFY_EMAIL
+        - UPDATE_PASSWORD
+    additionalClientScopes:
+      - name: LegalPersonCredential
+        description: OIDC4VC Scope, that adds all properties required for a user.
+        protocol: openid-connect
+        attributes:
+          include.in.token.scope: "false"
+          display.on.consent.screen: "false"
+        protocolMappers:
+          - name: context-mapper
+            protocol: oid4vc
+            protocolMapper: oid4vc-context-mapper
+            consentRequired: false
+            config:
+              context: https://www.w3.org/2018/credentials/v1
+              supportedCredentialTypes: LegalPersonCredential
+          - name: firstName-mapper
+            protocol: oid4vc
+            protocolMapper: oid4vc-user-attribute-mapper
+            consentRequired: false
+            config:
+              subjectProperty: firstName
+              supportedCredentialTypes: LegalPersonCredential
+              userAttribute: firstName
+          - name: email-mapper
+            protocol: oid4vc
+            protocolMapper: oid4vc-user-attribute-mapper
+            consentRequired: false
+            config:
+              subjectProperty: email
+              supportedCredentialTypes: LegalPersonCredential
+              userAttribute: email
+          - name: lastName-mapper
+            protocol: oid4vc
+            protocolMapper: oid4vc-user-attribute-mapper
+            consentRequired: false
+            config:
+              subjectProperty: lastName
+              supportedCredentialTypes: LegalPersonCredential
+              userAttribute: lastName
+          - name: role-mapper
+            protocol: oid4vc
+            protocolMapper: oid4vc-target-role-mapper
+            consentRequired: false
+            config:
+              subjectProperty: roles
+              supportedCredentialTypes: LegalPersonCredential
+              clientId: ${DID}
+    defaultRealmConfig:
+      verifiableCredentialsEnabled: true
+      enabled: true
+      attributes:
+        preAuthorizedCodeLifespanS: 120
+        issuerDid: ${DID}
+        vc.user-sd.expiry_in_s: "31536000"
+        vc.user-sd.format: vc+sd-jwt
+        vc.user-sd.scope: LegalPersonCredential
+        vc.user-sd.vct: LegalPersonCredential
+        vc.user-sd.credential_signing_alg_values_supported: ES256
+        vc.user-sd.credential_build_config.token_jws_type: vc+sd-jwt
+        vc.user-sd.credential_build_config.visible_claims: roles,email
+        vc.user-sd.credential_build_config.proof_types_supported: '{"jwt":{"proof_signing_alg_values_supported":["ES256"]}}'
+        vc.user-sd.credential_build_config.decoys: "3"
+        vc.user-sd.credential_build_config.signing_algorithm: ES256
+      clients:
+        - clientId: ${DID}
+          enabled: true
+          protocol: openid-connect
+          publicClient: false
+          serviceAccountsEnabled: true
+          clientAuthenticatorType: client-secret
+          redirectUris: []
+          directAccessGrantsEnabled: true
+          defaultClientScopes:
+            - web-origins
+            - acr
+            - roles
+            - profile
+            - basic
+            - email
+          optionalClientScopes: []
+          surrogateAuthRequired: false
+          alwaysDisplayInConsole: false
+          defaultRoles: []
+          webOrigins: []
+          notBefore: 0
+          bearerOnly: false
+          consentRequired: false
+          standardFlowEnabled: true
+          implicitFlowEnabled: false
+          frontchannelLogout: false
+          protocolMappers: []
+          authenticationFlowBindingOverrides: {}
+          fullScopeAllowed: true
+          nodeReRegistrationTimeout: -1
+      components:
+        org.keycloak.protocol.oid4vc.issuance.credentialbuilder.CredentialBuilder:
+          - name: sd-jwt-builder
+            providerId: vc+sd-jwt
+          - name: jwt-vc-builder
+            providerId: jwt_vc
+      defaultDefaultClientScopes:
+        - acr
+        - roles
+        - role_list
+        - email
+        - web-origins
+        - profile
+      defaultOptionalClientScopes:
+        - LegalPersonCredential
     keys:
       curveType: P-256
   tir: {}

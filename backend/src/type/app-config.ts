@@ -1,5 +1,6 @@
 import ClientScopeRepresentation from "@keycloak/keycloak-admin-client/lib/defs/clientScopeRepresentation";
 import RealmRepresentation from "@keycloak/keycloak-admin-client/lib/defs/realmRepresentation";
+import UserRepresentation from "@keycloak/keycloak-admin-client/lib/defs/userRepresentation";
 import { Credentials } from "@keycloak/keycloak-admin-client/lib/utils/auth";
 import { CorsOptions } from "cors";
 import SMTPPool from "nodemailer/lib/smtp-pool";
@@ -55,6 +56,9 @@ export interface KeycloakConfig {
     keys: { curveType: string };
     realmNameLength: number;
     additionalClientScopes: ClientScope[];
+    adminPasswordLength: number;
+    adminEmailLifespan: string;
+    adminUserConfig: UserRepresentation;
 }
 
 export interface StorageConfig {

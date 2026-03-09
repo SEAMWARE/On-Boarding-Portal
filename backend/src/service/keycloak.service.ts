@@ -1,4 +1,5 @@
 import KeycloakAdminClient from "@keycloak/keycloak-admin-client";
+import ms, { StringValue } from 'ms';
 import { ClientScope, KeycloakConfig } from "../type/app-config";
 import { logger } from "./logger";
 import { configService } from "./config.service";
@@ -7,6 +8,16 @@ import crypto from 'crypto';
 import { didService } from "./did.service";
 import { DOLLAR_REGEX, TemplateService } from "./template.service";
 import { Registration } from "../entity/registration.entity";
+import UserRepresentation from "@keycloak/keycloak-admin-client/lib/defs/userRepresentation";
+import { RequiredActionAlias } from "@keycloak/keycloak-admin-client/lib/defs/requiredActionProviderRepresentation";
+
+const REALM_CHARSET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_";
+
+interface AdminUser {
+    username: string;
+
+    realm: string;
+}
 
 interface RealmContext {
     DID: string;
@@ -27,11 +38,12 @@ class KeycloakService {
     }
 
     createDidRealm(): string {
-        const realm = this._generateRealmName();
+        const realm = this.generateRandomString(this.config.realmNameLength, REALM_CHARSET);
         return didService.generateDid(realm);
 
     }
-    async createRealm({did, name}: Registration): Promise<string> {
+
+    async createRealm({ did, name, email }: Registration): Promise<string> {
         const realm = didService.getRealmFromDid(did);
         logger.info(`Create realm '${realm}'`)
         const context: RealmContext = {
@@ -39,18 +51,15 @@ class KeycloakService {
             REALM: realm,
             ID: realm
         }
-        let config = {...this._gerDefaultConfig(context), id: realm, realm, displayName: `Realm for '${name}'`}
-        config.components = {
-            ...config.components,
-            "org.keycloak.keys.KeyProvider": this._generateKeyProvider(this.config.keys.curveType)
-        }
+        let config = { ...this._gerDefaultConfig(context), id: realm, realm, displayName: `Realm for '${name}'` }
+        this._addKeyProvider(this.config.keys.curveType, config);
 
         await this._authClient();
         const { realmName } = await this.adminClient.realms.create(config as RealmRepresentation)
         logger.info(`Created realm '${realm}'`)
 
         if (this.config.additionalClientScopes) {
-            const processScope = async ({type, ...clientScope}: ClientScope) => {
+            const processScope = async ({ type, ...clientScope }: ClientScope) => {
                 const { id } = await this.adminClient.clientScopes.create({ ...clientScope, realm: realmName });
 
                 if (type === 'default') {
@@ -72,6 +81,15 @@ class KeycloakService {
                 }
             });
         }
+        if (this.config.adminUserConfig.enabled) {
+            try {
+                await this._createAdminUser(realmName, email);
+            } catch(error) {
+                logger.error('Unable to create admin user', error);
+            }
+        } else {
+            logger.info('Do not create admin user because it is disabled');
+        }
         return did;
     }
 
@@ -86,16 +104,9 @@ class KeycloakService {
         await this.adminClient.auth(this.config.auth)
     }
 
-    private _generateRealmName() {
+    private _addKeyProvider(curve: string, config: any = {}): any {
 
-        const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_';
-        const bytes = crypto.randomBytes(this.config.realmNameLength);
-
-        return Array.from(bytes, (byte) => charset[byte % charset.length]).join('');
-    }
-
-    private _generateKeyProvider(curve: string): any {
-        return [{
+        const key = {
             name: 'ec-key',
             providerId: 'ecdsa-generated',
             config: {
@@ -105,13 +116,53 @@ class KeycloakService {
                 priority: ["0"],
                 enabled: ["true"]
             }
-        }]
+        };
+        config.components = config.components || {};
+        if (config.components['org.keycloak.keys.KeyProvider']) {
+            config.components['org.keycloak.keys.KeyProvider'].push(key)
+        } else {
+            config.components['org.keycloak.keys.KeyProvider'] = [key]
+        }
     }
 
     private _gerDefaultConfig(context: RealmContext): Omit<RealmRepresentation, 'realm' | 'id'> {
 
         const replaced = this.templateService.replace(JSON.stringify(this.config.defaultRealmConfig), context)
         return JSON.parse(replaced);
+    }
+
+    private async _createAdminUser(realm: string, email: string): Promise<AdminUser> {
+
+        const user: UserRepresentation = {
+            ...this.config.adminUserConfig,
+            enabled: true,
+            email,
+        }
+        await this._authClient();
+        const realmAdmin = await this.adminClient.users.create({...user, realm})
+        if (user.requiredActions?.includes(RequiredActionAlias.VERIFY_EMAIL)) {
+            try {
+                await this.adminClient.users.executeActionsEmail({
+                    id: realmAdmin.id,
+                    realm,
+                    actions: user.requiredActions,
+                    lifespan: ms(this.config.adminEmailLifespan as StringValue) / 1000
+                })
+            } catch(error) {
+                logger.error('Unable to execute user actions', error);
+            }
+        }
+        return {
+            username: user.id!,
+            realm
+        }
+    }
+
+    private generateRandomString(length = 16, charset = REALM_CHARSET) {
+
+        const bytes = crypto.randomBytes(length);
+
+        return Array.from(bytes).map((byte) => charset[byte % charset.length]).join('');
     }
 }
 
