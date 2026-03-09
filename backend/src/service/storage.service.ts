@@ -41,7 +41,11 @@ export class StorageService {
 
     async getFilePath(directoryPath: string, fileName: string): Promise<string | null> {
         try {
-            const fullPath = path.join(directoryPath, fileName);
+            const fullPath = path.resolve(directoryPath, fileName);
+
+            if (!fullPath.startsWith(path.resolve(directoryPath) + path.sep)) {
+                return null;
+            }
 
             await fs.access(fullPath);
             const stats = await fs.stat(fullPath);
