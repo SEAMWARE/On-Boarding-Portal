@@ -86,7 +86,7 @@ router.put('/registrations/submit/:id',uploadFiles('files', { maxCount: 5, allow
     const id = req.params.id as string;
     const data = req.body as RegistrationUpdate;
     const uploadedFiles = req.files as Express.Multer.File[];
-    if (!data || !uploadFiles) {
+    if (!data || !uploadedFiles) {
         return res.status(400).send({error: 'Email, DID or file field is required'})
     }
     const allowedStatus = [RegistrationStatus.ACTION_REQUIRED, RegistrationStatus.SUBMITTED]
@@ -112,14 +112,14 @@ router.put('/registrations/submit/:id',uploadFiles('files', { maxCount: 5, allow
             delete data.filesPath;
         }
 
-        // This can cause error if update fails
+        const registration = (await registrationRepository.updateInfo(id, data, queryRunner))!;
+
+        await queryRunner.commitTransaction();
+
         if (uploadedFiles?.length > 0 || data.did !== prevRegistration.did) {
             await storageService.updateFiles(prevRegistration.did, data.did || prevRegistration.did, uploadedFiles)
         }
 
-        const registration = (await registrationRepository.updateInfo(id, data, queryRunner))!;
-
-        await queryRunner.commitTransaction();
         res.status(200).json(registration);
     } catch(error) {
         logger.error('Unable to update registration', error);

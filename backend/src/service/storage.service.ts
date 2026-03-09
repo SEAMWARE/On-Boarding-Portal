@@ -80,7 +80,7 @@ export class StorageService {
             await rename(this.getFilesPath(prevDid), didFolder)
         }
         if (files?.length) {
-            await this.removeFolder(this.getFilesPath(prevDid))
+            await this.removeFolder(didFolder)
             return await this.saveFiles(did, files);
         }
         return didFolder;
