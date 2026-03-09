@@ -1,6 +1,8 @@
 server:
   port: 8080
   staticPath: ./static
+  trustProxy: 1
+  jsonBodyLimit: 100kb
   storage:
     destFolder: files
     maxSizeMB: 5

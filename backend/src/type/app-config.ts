@@ -21,6 +21,8 @@ export interface ServerConfig {
     staticPath: string;
     cors: CorsOptions;
     storage: StorageConfig;
+    trustProxy: number | boolean;
+    jsonBodyLimit: string;
 }
 
 export interface Logging {
