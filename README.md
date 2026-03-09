@@ -1,122 +1,263 @@
 # On-Boarding Portal
 
-Web portal for managing company onboarding. It includes a public registration form and an OIDC-protected admin panel for reviewing and approving submissions.
+A self-service portal that allows organizations to register on a decentralized trust infrastructure. Upon submission, the platform provisions a dedicated Keycloak realm, generates a DID (`did:web`), and registers the organization in the Trust Issuer Registry (TIR).
 
-## Tech Stack
+## Table of Contents
 
-| Layer | Technologies |
-|-------|-------------|
-| Frontend | Angular 21, Angular Material, RxJS, Vitest |
-| Backend | Node.js 22, Express 5, TypeORM, TypeScript 5.9 |
-| Database | PostgreSQL (default), MS SQL and MongoDB supported |
-| Authentication | OpenID Connect, Keycloak |
-| Email | Nodemailer |
-| Infrastructure | Docker, Helm / Kubernetes |
+- [Prerequisites](#prerequisites)
+- [Configuration](#configuration)
+- [Running Locally (Development)](#running-locally-development)
+- [Running with Docker](#running-with-docker)
+- [Deploying with Helm (Kubernetes)](#deploying-with-helm-kubernetes)
+- [API Reference](#api-reference)
 
-## Project Structure
-
-```
-├── backend/                 # REST API (Express + TypeScript)
-│   ├── src/
-│   │   ├── controller/      # Endpoints
-│   │   ├── service/         # Business logic
-│   │   ├── entity/          # TypeORM entities
-│   │   ├── repository/      # Data access layer
-│   │   ├── middleware/      # Auth, CORS, file upload
-│   │   └── config/          # application.default.yaml
-│   └── templates/           # Email templates (HTML)
-├── frontend/                # Angular SPA
-│   └── src/app/
-│       └── features/
-│           ├── landing/     # Home page
-│           ├── submit/      # Registration form
-│           └── admin/       # Admin panel
-├── chart/                   # Helm chart for Kubernetes
-├── .github/workflows/       # CI/CD (GitHub Actions)
-└── Dockerfile               # Multi-stage build
-```
-
+---
 ## Prerequisites
 
-- Node.js >= 22
-- pnpm >= 10
-- PostgreSQL (or another supported database)
+| Dependency | Version | Purpose |
+|---|---|---|
+| Node.js | 22+ | Backend runtime |
+| pnpm | 10+ | Package manager |
+| PostgreSQL | 15+ | Data persistence |
+| Keycloak | 26+ with OID4VC | Authentication & realm provisioning |
+| [did-helper](https://github.com/SEAMWARE/did-helper) | — | DID document hosting with Keycloak integration (see below) |
+| SMTP server | any | Email notifications |
+| TIR | — | Trust Issuer Registry (optional) |
 
-## Local Development
-
-### Backend
-
-```bash
-cd backend
-pnpm install
-pnpm run dev
-```
-
-The server starts at `http://localhost:8080`.
-
-### Frontend
-
-```bash
-cd frontend
-pnpm install
-pnpm start
-```
-
-The application starts at `http://localhost:4200`.
+> **did-helper** must be configured with Keycloak integration enabled so that newly created realms can resolve their `did:web` documents. The portal calls did-helper to register the DID after provisioning each realm — without it, verifiable credential issuance will not work. Point `didGenerator.didWebHost` in `application.yaml` to the domain served by your did-helper instance.
 
 ## Configuration
 
-Configuration is managed through YAML files with environment variable support (`${VAR_NAME}`).
+### Full configuration reference
 
-- **Defaults:** `backend/src/config/application.default.yaml`
-- **Override:** `config/application.yaml` (merged on top of the defaults)
+```yaml
+# ──────────────────────────────────────────────
+# HTTP Server
+# ──────────────────────────────────────────────
+server:
+  port: 8080               # Listening port
+  staticPath: ./static     # Path to the compiled Angular build
+  trustProxy: 1            # Number of trusted proxy hops (set to 1 behind a load balancer)
+  jsonBodyLimit: 100kb     # Maximum JSON request body size
+  storage:
+    destFolder: files      # Root folder for uploaded files (relative to cwd)
+    maxSizeMB: 5           # Maximum size per uploaded file in MB
+  cors:
+    origin: "*"            # Allowed origins. Use a specific URL in production
+    methods: [GET, POST, PUT, DELETE, OPTIONS]
+    allowedHeaders: [Content-Type, Authorization, X-Organization]
+    credentials: true
+    maxAge: 600            # Preflight cache TTL (seconds)
 
-### Main configuration areas
+# ──────────────────────────────────────────────
+# Logging
+# ──────────────────────────────────────────────
+logging:
+  level: info              # error | warn | info | http | verbose | debug
 
-| Area | Description |
-|------|-------------|
-| `server` | Port (8080), CORS, storage folder, max file size (5 MB) |
-| `database` | Type, host, port, credentials, database name |
-| `app.login` | OpenID URL, client ID/secret, PKCE |
-| `app.keycloak` | Keycloak admin credentials |
-| `email` | SMTP, submission and update templates |
+# ──────────────────────────────────────────────
+# Database (PostgreSQL)
+# ──────────────────────────────────────────────
+database:
+  type: postgres
+  host: localhost
+  port: 5432
+  username: postgres
+  password: postgres
+  database: onboarding
+  synchronize: true        # Auto-sync schema on startup. Set to false in production
+  logging: false           # Log SQL queries
 
-## Docker
+# ──────────────────────────────────────────────
+# Application
+# ──────────────────────────────────────────────
+app:
+  documentToSignUrl: https://...  # URL of the document users must accept at registration
 
-### Build
+  # OIDC login (used for admin access)
+  login:
+    openIdUrl: https://<keycloak>/realms/<realm>   # OpenID Connect discovery URL
+    clientId: onboarding                           # OIDC client ID
+    clientSecret: <secret>                         # OIDC client secret
+    scope: openid                                  # Requested OIDC scope
+    codeChallenge: true                            # Enable PKCE (recommended)
 
-The frontend must be built before building the image (CI handles this via `.github/scripts/build.sh`):
+  # Keycloak admin connection (used to provision realms)
+  keycloak:
+    baseUrl: https://<keycloak>
+    realmName: master                # Realm where the admin client lives
+    auth:
+      username: <admin-user>
+      password: <admin-password>
+      grantType: password
+      clientId: admin-cli
+      realmName: master  # Realm where the admin user exists and has admin privileges.
+                         # The user must have permission to create and delete realms
+                         # (typically the built-in "admin" user in the master realm).
 
-```bash
-cd frontend && pnpm install && pnpm build && cd ..
-docker build -t onboarding:latest .
+    # Generated realm settings
+    realmNameLength: 36              # Length of randomly generated realm names
+    adminPasswordLength: 30          # Length of generated admin passwords
+    adminEmailLifespan: 72h          # Expiry of the admin welcome email action link
+
+    # Elliptic curve for signing keys
+    keys:
+      curveType: P-256               # P-256 | P-384 | P-521
+
+    # SMTP for newly created Keycloak realms
+    defaultRealmConfig:
+      smtpServer:
+        host: smtp.example.com
+        port: "587"
+        auth: "true"
+        user: <smtp-user>
+        password: <smtp-password>
+        starttls: "true"
+        ssl: "false"
+        from: keycloak@example.com
+        fromDisplayName: Keycloak Auth
+
+  # Trust Issuer Registry
+  tir:
+    url: http://<tir-host>
+
+# ──────────────────────────────────────────────
+# Email (Nodemailer)
+# ──────────────────────────────────────────────
+email:
+  enabled: true            # Set to false to disable all emails
+  type: nodemailer
+  from: onboarding@example.com
+  config:
+    service: Gmail         # Nodemailer service shorthand, or omit and use host/port
+    auth:
+      user: <smtp-user>
+      pass: <smtp-password>
+  # Custom email templates (optional — defaults are embedded)
+  submit:
+    subject: "OnBoarding Portal - Registration submitted"
+    html: "file://./templates/submit.html"
+  update:
+    subject: "OnBoarding Portal - Registration updated"
+    html: "file://./templates/update.html"
+
+# ──────────────────────────────────────────────
+# DID generation
+# ──────────────────────────────────────────────
+didGenerator:
+  didWebHost: did:web:example.com    # Base domain for generated did:web identifiers
 ```
 
-### Run
+### Environment variable substitution
+
+Any value in the YAML can reference an environment variable using `${VAR_NAME}`:
+
+```yaml
+database:
+  password: ${DB_PASSWORD}
+```
+
+If the variable is not set the literal string `${DB_PASSWORD}` is used — make sure all substitutions are resolved before starting the app.
+
+---
+
+## Running Locally (Development)
+
+```bash
+# Terminal 1 — backend (TypeScript watch mode)
+cd backend && pnpm install && pnpm run dev
+
+# Terminal 2 — frontend (Angular dev server with hot reload)
+cd frontend && pnpm install && pnpm start
+```
+
+The frontend dev server proxies `/api` calls to `http://localhost:8080` automatically.
+
+---
+
+## Running with Docker
+
+### Build the image
+
+```bash
+# Build frontend first
+cd frontend && pnpm install && pnpm build
+cd ..
+
+# Build the Docker image (multi-stage: compiles backend + bundles frontend)
+docker build -t onboarding-portal:latest .
+```
+
+### Run the container
 
 ```bash
 docker run -p 8080:8080 \
-  -e APP_DB_HOST=db \
-  -e APP_DB_USERNAME=postgres \
-  -e APP_DB_PASSWORD=secret \
-  onboarding:latest
+  -v $(pwd)/backend/src/config/application.yaml:/app/application.yaml \
+  -v $(pwd)/files:/app/files \
+  onboarding-portal:latest
 ```
 
-## Kubernetes (Helm)
+The application is available at `http://localhost:8080`.
+
+> Mount a host directory to `/app/files` to persist uploaded files across container restarts.
+
+---
+
+## Deploying with Helm (Kubernetes)
+
+The `chart/` directory contains a production-ready Helm chart.
+
+### Install
 
 ```bash
-helm install onboarding ./chart -f custom-values.yaml
+helm upgrade --install onboarding ./chart \
+  --set ingress.enabled=true \
+  --set ingress.hosts[0].host=onboarding.example.com \
+  -f my-values.yaml
 ```
 
-See `chart/README.md` and `chart/values.yaml` for all available options.
+### Key `values.yaml` options
 
-## Health Checks
+```yaml
+replicaCount: 1
 
-| Endpoint | Description |
-|----------|-------------|
-| `GET /health/live` | Liveness — always returns 200 |
-| `GET /health/ready` | Readiness — checks database connection |
+image:
+  repository: mortega5/onboarding
+  tag: latest
+  pullPolicy: IfNotPresent
 
-## License
+service:
+  type: ClusterIP
+  port: 80
 
-MIT
+ingress:
+  enabled: false
+  className: nginx
+  hosts:
+    - host: onboarding.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+
+# Mount an application.yaml via ConfigMap
+config:
+  app:
+    login:
+      openIdUrl: https://...
+  database:
+    host: postgres
+    ...
+
+# Inject secrets as environment variables (referenced in config via ${VAR})
+secrets:
+  - name: onboarding-secrets   # existing Kubernetes Secret
+    keys:
+      - DB_PASSWORD
+      - APP_CLIENT_SECRET
+      - APP_KEYCLOAK_PASSWORD
+
+persistence:
+  enabled: true                # Mount a PVC for uploaded files
+  size: 5Gi
+  storageClass: ""
+```
