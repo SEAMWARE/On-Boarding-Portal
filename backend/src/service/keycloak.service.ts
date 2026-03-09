@@ -51,7 +51,7 @@ class KeycloakService {
             REALM: realm,
             ID: realm
         }
-        let config = { ...this._gerDefaultConfig(context), id: realm, realm, displayName: `Onboarding '${email}'` }
+        let config = { ...this._getDefaultConfig(context), id: realm, realm, displayName: `Onboarding '${email}'` }
         this._addKeyProvider(this.config.keys.curveType, config);
 
         await this._authClient();
@@ -60,6 +60,7 @@ class KeycloakService {
 
         if (this.config.additionalClientScopes) {
             const processScope = async ({ type, ...clientScope }: ClientScope) => {
+                await this._authClient();
                 const { id } = await this.adminClient.clientScopes.create({ ...clientScope, realm: realmName });
 
                 if (type === 'default') {
@@ -96,8 +97,8 @@ class KeycloakService {
     async removeRealm(did: string) {
         const realm = didService.getRealmFromDid(did);
         await this._authClient();
-        logger.info(`Delete realm '${realm}'`)
         await this.adminClient.realms.del({ realm }, { catchNotFound: true })
+        logger.info(`Deleted realm '${realm}'`)
     }
 
     private async _authClient() {
@@ -125,7 +126,7 @@ class KeycloakService {
         }
     }
 
-    private _gerDefaultConfig(context: RealmContext): Omit<RealmRepresentation, 'realm' | 'id'> {
+    private _getDefaultConfig(context: RealmContext): Omit<RealmRepresentation, 'realm' | 'id'> {
 
         const replaced = this.templateService.replace(JSON.stringify(this.config.defaultRealmConfig), context)
         return JSON.parse(replaced);
