@@ -51,7 +51,7 @@ class KeycloakService {
             REALM: realm,
             ID: realm
         }
-        let config = { ...this._gerDefaultConfig(context), id: realm, realm, displayName: `Realm for '${name}'` }
+        let config = { ...this._gerDefaultConfig(context), id: realm, realm, displayName: `Onboarding '${email}'` }
         this._addKeyProvider(this.config.keys.curveType, config);
 
         await this._authClient();

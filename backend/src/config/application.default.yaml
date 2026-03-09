@@ -50,6 +50,8 @@ app:
       enabled: true
       username: admin
       emailVerified: false
+      groups:
+        - /admin
       clientRoles:
         realm-management:
           - manage-users
@@ -173,6 +175,15 @@ app:
         - profile
       defaultOptionalClientScopes:
         - LegalPersonCredential
+      groups:
+        - name: admin
+          clientRoles:
+            realm-management:
+              - manage-users
+              - manage-realm
+              - query-users
+              - query-groups
+              - view-users
     keys:
       curveType: P-256
   tir: {}
