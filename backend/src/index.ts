@@ -25,7 +25,7 @@ appServer.use(cors(server.cors))
 appServer.use(express.json())
 appServer.disable('x-powered-by');
 appServer.use(requestLogger);
-appServer.use(express.static(angularDistPath));
+appServer.use(express.static(angularDistPath, { index: false }));
 appServer.set('trust proxy', true);
 appServer.use(cookieParser())
 appServer.use(forwardedMiddleware);
@@ -47,7 +47,7 @@ appServer.get('/health/ready', async (req, res) => {
     } else {
       res.status(503).json({ status: 'NOT_READY', reason: 'Database connection failed' });
     }
-  } catch(error) {
+  } catch (error) {
     logger.error('Error checking database status', error);
     res.status(503).json({ status: 'NOT_READY', reason: 'Database connection failed' });
   }
@@ -58,7 +58,7 @@ appServer.get('/health/ready', async (req, res) => {
 appServer.use('/api', oidcController, registrationController, adminRegistrationController)
 
 appServer.use((_req, res) => {
-  ejs.renderFile(indexPath, { ...app }, (err, str) => {
+  ejs.renderFile(indexPath, { documentToSignUrl: app.documentToSignUrl }, (err, str) => {
     if (err) {
       logger.error(err);
       return res.status(500).send('Error rendering template');

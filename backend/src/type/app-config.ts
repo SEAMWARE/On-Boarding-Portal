@@ -10,7 +10,6 @@ export interface AppConfig {
     app: AppCfg
     database: DataSourceOptions;
     email: EmailConfig;
-    documentToSignUrl: string;
 }
 
 export interface ServerConfig {
@@ -28,6 +27,7 @@ export interface AppCfg {
     login: LoginConfig;
     tir: TirConfig;
     keycloak: KeycloakConfig;
+    documentToSignUrl: string;
 }
 
 export interface LoginConfig {
@@ -71,4 +71,4 @@ export interface NodemailerConfig extends BaseEmailConfig {
     config: SMTPPool | SMTPPool.Options
 }
 
-export  type EmailConfig = NodemailerConfig;
+export type EmailConfig = NodemailerConfig;
