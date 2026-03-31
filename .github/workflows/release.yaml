@@ -61,7 +61,7 @@ jobs:
           password: ${{ secrets.QUAY_PASSWORD }}
 
       - name: Build&Push image
-        run: ./.github/scripts/build.sh --platform ${{ env.PLATFORMS }} -t ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/onboarding:latest -t quay.io/seamware/onboarding:${{ needs.generate-version.outputs.version }} --push .
+        run: ./.github/scripts/build.sh --platform ${{ env.PLATFORMS }} -t ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/onboarding:latest -t ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/onboarding:${{ needs.generate-version.outputs.version }} --push .
 
   git-release:
     needs: ["generate-version", "build-and-push"]
