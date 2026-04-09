@@ -52,7 +52,7 @@ class KeycloakService {
             ID: realm
         }
         let config = { ...this._getDefaultConfig(context), id: realm, realm, displayName: `Onboarding '${email}'` }
-        this._addKeyProvider(this.config.keys.curveType, config);
+        this._addKeyProvider(this.config.keys.curveType, did, config);
 
         await this._authClient();
         const { realmName } = await this.adminClient.realms.create(config as RealmRepresentation)
@@ -85,7 +85,7 @@ class KeycloakService {
         if (this.config.adminUserConfig.enabled) {
             try {
                 await this._createAdminUser(realmName, email);
-            } catch(error) {
+            } catch (error) {
                 logger.error('Unable to create admin user', error);
             }
         } else {
@@ -105,7 +105,7 @@ class KeycloakService {
         await this.adminClient.auth(this.config.auth)
     }
 
-    private _addKeyProvider(curve: string, config: any = {}): any {
+    private _addKeyProvider(curve: string, kid: string, config: any = {}): any {
 
         const key = {
             name: 'ec-key',
@@ -115,6 +115,7 @@ class KeycloakService {
                 ecdsaEllipticCurveKey: [curve],
                 active: ["true"],
                 priority: ["0"],
+                kid: [kid],
                 enabled: ["true"]
             }
         };
@@ -140,7 +141,8 @@ class KeycloakService {
             email,
         }
         await this._authClient();
-        const realmAdmin = await this.adminClient.users.create({...user, realm})
+        logger.info(`Creating admin user '${user.username}' and email '${user.email}' in realm '${realm}'`)
+        const realmAdmin = await this.adminClient.users.create({ ...user, realm })
         if (user.requiredActions?.includes(RequiredActionAlias.VERIFY_EMAIL)) {
             try {
                 await this.adminClient.users.executeActionsEmail({
@@ -149,7 +151,7 @@ class KeycloakService {
                     actions: user.requiredActions,
                     lifespan: ms(this.config.adminEmailLifespan as StringValue) / 1000
                 })
-            } catch(error) {
+            } catch (error) {
                 logger.error('Unable to execute user actions', error);
             }
         }
