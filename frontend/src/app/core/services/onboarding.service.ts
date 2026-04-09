@@ -107,6 +107,11 @@ export class OnBoardingService {
         return this.http.get<Registration>(url);
     }
 
+    deleteAdminRegistration(id: string): Observable<void> {
+        const url = this._resolveUrl(`${this.registrations}/${id}`);
+        return this.http.delete<void>(url);
+    }
+
     getAdminFile(id: string, filename: string): Observable<Blob> {
 
         const url = this._resolveUrl(`${this.registrations}/${id}/files/${filename}`)
