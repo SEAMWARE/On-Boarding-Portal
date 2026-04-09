@@ -59,28 +59,7 @@ class KeycloakService {
         logger.info(`Created realm '${realm}'`)
 
         if (this.config.additionalClientScopes) {
-            const processScope = async ({ type, ...clientScope }: ClientScope) => {
-                await this._authClient();
-                const { id } = await this.adminClient.clientScopes.create({ ...clientScope, realm: realmName });
-
-                if (type === 'default') {
-                    await this.adminClient.clientScopes.addDefaultClientScope({ id, realm: realmName });
-                } else if (type === 'optional') {
-                    await this.adminClient.clientScopes.addDefaultOptionalClientScope({ id, realm: realmName });
-                }
-                return clientScope.name;
-            };
-
-            const results = await Promise.allSettled(
-                this.config.additionalClientScopes.map(processScope)
-            );
-
-            results.forEach((result, index) => {
-                if (result.status === 'rejected') {
-                    const scopeName = this.config.additionalClientScopes![index].name;
-                    logger.warn(`Error processing client scope '${scopeName}':`, result.reason);
-                }
-            });
+            await this._processClientScopes(this.config.additionalClientScopes, context);
         }
         if (this.config.adminUserConfig.enabled) {
             try {
@@ -99,6 +78,47 @@ class KeycloakService {
         await this._authClient();
         await this.adminClient.realms.del({ realm }, { catchNotFound: true })
         logger.info(`Deleted realm '${realm}'`)
+    }
+
+    private async _assignScopeToClients(scopeId: string, clientUuids: string[], realm: string, type: ClientScope['type']): Promise<void> {
+        const assign = type === 'default'
+            ? (id: string) => this.adminClient.clients.addDefaultClientScope({ id, realm, clientScopeId: scopeId })
+            : (id: string) => this.adminClient.clients.addOptionalClientScope({ id, realm, clientScopeId: scopeId });
+
+        await Promise.all(clientUuids.map(assign));
+    }
+
+    private async _processClientScopes(scopesTemplates: ClientScope[], context: RealmContext): Promise<void> {
+        const scopes = this._getFromTemplate(scopesTemplates, context) as ClientScope[];
+        const realm = context.REALM;
+        const clients = await this.adminClient.clients.find({ realm });
+        const clientUuids = clients.map(c => c.id!).filter(Boolean);
+
+        const processScope = async ({ type, ...clientScope }: ClientScope) => {
+            await this._authClient();
+            const { id } = await this.adminClient.clientScopes.create({ ...clientScope, realm });
+
+            if (type === 'default') {
+                logger.info(`Adding default client scope '${clientScope.name}' to realm '${realm}'`)
+                await this.adminClient.clientScopes.addDefaultClientScope({ id, realm });
+            } else {
+                logger.info(`Adding optional client scope '${clientScope.name}' to realm '${realm}'`)
+                await this.adminClient.clientScopes.addDefaultOptionalClientScope({ id, realm });
+            }
+
+            logger.info(`Assigning client scope '${clientScope.name}' to ${clientUuids.length} clients in realm '${realm}'`)
+            await this._assignScopeToClients(id, clientUuids, realm, type);
+
+            return clientScope.name;
+        };
+
+        const results = await Promise.allSettled(scopes.map(processScope));
+
+        results.forEach((result, index) => {
+            if (result.status === 'rejected') {
+                logger.warn(`Error processing client scope '${scopes[index].name}':`, result.reason);
+            }
+        });
     }
 
     private async _authClient() {
@@ -129,7 +149,12 @@ class KeycloakService {
 
     private _getDefaultConfig(context: RealmContext): Omit<RealmRepresentation, 'realm' | 'id'> {
 
-        const replaced = this.templateService.replace(JSON.stringify(this.config.defaultRealmConfig), context)
+        return this._getFromTemplate(this.config.defaultRealmConfig, context) as Omit<RealmRepresentation, 'realm' | 'id'>;
+    }
+
+    private _getFromTemplate(source: Object, context: RealmContext): Object {
+
+        const replaced = this.templateService.replace(JSON.stringify(source), context)
         return JSON.parse(replaced);
     }
 
