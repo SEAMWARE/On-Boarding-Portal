@@ -30,6 +30,8 @@ database:
   database: onboarding
   synchronize: true
   logging: false
+  # Force UTC timezone for date storage. Ignored by PostgreSQL driver, required for MySQL to store dates in UTC.
+  timezone: 'Z'
 app:
   login:
     openIdUrl: ''
