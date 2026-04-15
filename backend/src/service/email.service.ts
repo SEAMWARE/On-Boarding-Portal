@@ -84,17 +84,18 @@ class NodemailerEmailService extends BaseMailService {
 class DisabledMailService extends BaseMailService {
 
     sendSubmitEmail(email: string, mailContext: MailContext): Promise<void> {
-        logger.debug('Mail service is disabeld')
+        logger.debug('Mail service is disabled')
         return Promise.resolve();
     }
     sendUpdateEmail(email: string, mailContext: MailContext): Promise<void> {
-        logger.debug('Mail service is disabeld')
+        logger.debug('Mail service is disabled')
         return Promise.resolve();
     }
 }
 
 const emailService = (() => {
     if (!emailConfig.enabled) {
+        logger.info(`Mail service is disabled. No emails will be sent`)
         return new DisabledMailService();
     }
     logger.info(`Using '${emailConfig.type}' to send emails`)
