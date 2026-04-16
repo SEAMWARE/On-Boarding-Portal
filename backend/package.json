@@ -23,6 +23,7 @@
     "mongodb": "^7.0.0",
     "mssql": "^12.2.0",
     "multer": "^2.0.2",
+    "mysql2": "^3.22.0",
     "nodemailer": "^7.0.12",
     "openid-client": "^6.8.1",
     "pg": "^8.17.1",

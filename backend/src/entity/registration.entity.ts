@@ -1,5 +1,9 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import { FileMetadata } from "../type/file-metadata";
+import { configService } from "../service/config.service";
+
+const dbType = configService.get().database.type;
+const DATE_COLUMN_TYPE = dbType === 'mysql' ? 'datetime' : 'timestamptz';
 
 export enum RegistrationStatus {
     SUBMITTED = "submitted",
@@ -42,12 +46,12 @@ export class Registration {
     @Column({ nullable: true })
     filesPath?: string;
 
-    @Column({ nullable: true, type: 'text'})
+    @Column({ nullable: true, type: 'text' })
     reason?: string;
-    @CreateDateColumn({ type: "timestamptz" })
+    @CreateDateColumn({ type: DATE_COLUMN_TYPE })
     createdAt?: Date;
 
-    @UpdateDateColumn({ type: "timestamptz" })
+    @UpdateDateColumn({ type: DATE_COLUMN_TYPE })
     updatedAt?: Date;
 
     files?: FileMetadata[];
