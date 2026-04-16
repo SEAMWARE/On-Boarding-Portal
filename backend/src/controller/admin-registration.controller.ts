@@ -89,7 +89,7 @@ router.delete('/admin/registrations/:id', authFilter, async (req: Request, res: 
         }
 
         if (registration.status === RegistrationStatus.ACTIVE) {
-            await registrationService.unregister(registration.did);
+            await registrationService.unregister(registration.did, registration.didGenerated);
         }
         await registrationRepository.delete(id, queryRunner);
         logger.info(`Registration ${id} deleted by admin.`);
