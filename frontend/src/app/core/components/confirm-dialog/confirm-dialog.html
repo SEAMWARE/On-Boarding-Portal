@@ -1,0 +1,16 @@
+<h2 mat-dialog-title class="dialog-title">
+  <mat-icon class="title-icon">warning</mat-icon>
+  {{ title }}
+</h2>
+
+<mat-dialog-content>
+  <p class="dialog-message">{{ message }}</p>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button matButton="tonal" (click)="cancel()">{{ cancelText }}</button>
+  <button mat-raised-button color="warn" (click)="confirm()">
+    <mat-icon>delete</mat-icon>
+    {{ confirmText }}
+  </button>
+</mat-dialog-actions>

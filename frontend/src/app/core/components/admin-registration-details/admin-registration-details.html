@@ -121,6 +121,10 @@
     </mat-tab-group>
     <div class="actions">
         @if(!_editting()) {
+        <button type="button" mat-flat-button color="warn" class="delete-action" (click)="deleteRegistration()">
+            <mat-icon>delete</mat-icon>
+            Delete
+        </button>
         <button type="button" matButton="filled" color="accent" (click)="enableReview()">
             <mat-icon>edit_note</mat-icon>
             Review

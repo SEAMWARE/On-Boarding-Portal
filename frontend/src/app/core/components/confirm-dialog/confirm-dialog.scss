@@ -1,0 +1,15 @@
+.dialog-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .title-icon {
+    color: var(--mat-sys-error);
+  }
+}
+
+.dialog-message {
+  color: var(--mat-sys-on-surface-variant);
+  line-height: 1.6;
+  margin: 0;
+}

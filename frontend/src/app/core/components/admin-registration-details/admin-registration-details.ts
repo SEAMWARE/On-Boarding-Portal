@@ -15,6 +15,8 @@ import { OnBoardingService } from '../../services/onboarding.service';
 import { conditionalValidator } from '../../validators/conditional-validator';
 import { MatDialog } from '@angular/material/dialog';
 import { PdfViewer } from '../pdf-viewer/pdf-viewer';
+import { ConfirmDialog } from '../confirm-dialog/confirm-dialog';
+import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { MatTabsModule } from '@angular/material/tabs';
 
@@ -47,7 +49,8 @@ export class AdminRegistrationDetails implements OnInit, OnDestroy {
     private fb: FormBuilder,
     private notification: NotificationService,
     private onBoardingService: OnBoardingService,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private router: Router
   ) {
     effect(() => {
       if (this.registrationForm) {
@@ -66,19 +69,19 @@ export class AdminRegistrationDetails implements OnInit, OnDestroy {
   initForm() {
     this.registrationForm = this.fb.group({
       status: [this.registration().status],
-      did: [{value: this.registration().did, disabled: true}],
+      did: [{ value: this.registration().did, disabled: true }],
       id: [{ value: this.registration().id, disabled: true }],
       email: [{ value: this.registration().email, disabled: true }],
       createdAt: [{ value: this.registration().createdAt, disabled: true }],
       updatedAt: [{ value: this.registration().updatedAt, disabled: true }],
       files: [''],
       reason: [this.registration().reason, [conditionalValidator(() => this.needRevision())]],
-      name: [{value: this.registration().name, disabled: true}],
-      taxId: [{value: this.registration().taxId, disabled: true}],
-      address: [{value: this.registration().address, disabled: true}],
-      city: [{value: this.registration().city, disabled: true}],
-      postCode: [{value: this.registration().postCode, disabled: true}],
-      country: [{value: this.registration().country, disabled: true}]
+      name: [{ value: this.registration().name, disabled: true }],
+      taxId: [{ value: this.registration().taxId, disabled: true }],
+      address: [{ value: this.registration().address, disabled: true }],
+      city: [{ value: this.registration().city, disabled: true }],
+      postCode: [{ value: this.registration().postCode, disabled: true }],
+      country: [{ value: this.registration().country, disabled: true }]
     });
 
     this.destroy$ = this.registrationForm.get('status')?.valueChanges
@@ -146,6 +149,28 @@ export class AdminRegistrationDetails implements OnInit, OnDestroy {
         this.notification.error("Error opening file");
       }
     })
+  }
+
+  deleteRegistration(): void {
+    this.dialog.open(ConfirmDialog, {
+      data: {
+        title: 'Delete registration',
+        message: `Are you sure you want to delete the registration for ${this.registration().email}? This action cannot be undone.`
+      }
+    }).afterClosed().subscribe(confirmed => {
+      if (confirmed) {
+        this.onBoardingService.deleteAdminRegistration(this.registration().id).subscribe({
+          next: () => {
+            this.notification.info('Registration deleted successfully'),
+              this.router.navigate(['/admin'])
+          },
+          error: (error) => {
+            console.error("Error deleting registration", error);
+            this.notification.error('Failed to delete registration')
+          }
+        });
+      }
+    });
   }
 
   prettyStatus(status: string) {

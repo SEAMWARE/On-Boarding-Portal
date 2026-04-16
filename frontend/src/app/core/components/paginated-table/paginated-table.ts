@@ -4,7 +4,7 @@ import { PageQueryFn } from '../../types/pagination';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { CommonModule } from '@angular/common';
-import { ColumnConfig } from '../../types/column-config';
+import { ActionColumn, ColumnConfig } from '../../types/column-config';
 import { FilterConfig } from '../../types/table-filter';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
@@ -89,10 +89,14 @@ export class PaginatedTable<T> implements OnInit {
     this.rowClick.emit(row);
   }
 
-  getValue(columnsConfig: ColumnConfig, row: any): any {
-    if (columnsConfig.getValue) {
-      return columnsConfig.getValue(row)
-    }
-    return row[columnsConfig.key];
+  getValue(col: ColumnConfig, row: any): any {
+    if (col.type === 'action') return null;
+    if (col.getValue) return col.getValue(row);
+    return row[col.key];
+  }
+
+  onActionClicked(event: Event, col: ActionColumn, row: T): void {
+    event.stopPropagation();
+    col.action(row, () => this.loadData());
   }
 }

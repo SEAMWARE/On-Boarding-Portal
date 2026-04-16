@@ -20,4 +20,12 @@ export interface NumberColumn extends BaseColumn {
   precision?: number;
 }
 
-export type ColumnConfig = TextColumn | DateColumn | NumberColumn;
+export interface ActionColumn {
+  key: string;
+  label: string;
+  type: 'action';
+  icon: string;
+  action: (row: any, reload: () => void) => void;
+}
+
+export type ColumnConfig = TextColumn | DateColumn | NumberColumn | ActionColumn;

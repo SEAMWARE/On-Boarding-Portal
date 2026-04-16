@@ -9,6 +9,9 @@ import { FilterConfig } from '../../../core/types/table-filter';
 import { RegistrationStatus } from '../../../core/types/registration-status';
 import { MatCardModule } from '@angular/material/card';
 import { Router } from '@angular/router';
+import { MatDialog } from '@angular/material/dialog';
+import { ConfirmDialog } from '../../../core/components/confirm-dialog/confirm-dialog';
+import { NotificationService } from '../../../core/services/notification';
 
 @Component({
   selector: 'app-dashboard',
@@ -20,7 +23,9 @@ export class Dashboard {
 
   constructor(
     private onBoardingService: OnBoardingService,
-    private readonly router: Router
+    private readonly router: Router,
+    private readonly dialog: MatDialog,
+    private readonly notificationService: NotificationService
   ) { }
   readonly columns: ColumnConfig[] = [
     {
@@ -51,7 +56,31 @@ export class Dashboard {
       key: 'files',
       label: '# Files',
       type: 'number',
-      getValue: (row) => row.files? row.files?.length : 0
+      getValue: (row) => row.files ? row.files?.length : 0
+    },
+    {
+      key: 'delete',
+      label: '',
+      type: 'action',
+      icon: 'delete',
+      action: (row: Registration, reload) => {
+        this.dialog.open(ConfirmDialog, {
+          data: { title: 'Delete registration', message: `Are you sure you want to delete the registration for ${row.email}? This action cannot be undone.` }
+        }).afterClosed().subscribe(confirmed => {
+          if (confirmed) {
+            this.onBoardingService.deleteAdminRegistration(row.id).subscribe({
+              next: () => {
+                this.notificationService.info('Registration deleted successfully'),
+                  reload()
+              },
+              error: (error) => {
+                console.error("Error deleting registration", error);
+                this.notificationService.error('Failed to delete registration');
+              }
+            });
+          }
+        });
+      }
     }
   ];
   readonly filters: FilterConfig[] = [{

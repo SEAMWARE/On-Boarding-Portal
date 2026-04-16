@@ -73,6 +73,41 @@ router.get('/admin/registrations/:id', authFilter, async (req: Request, res: Res
     }
 });
 
+router.delete('/admin/registrations/:id', authFilter, async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+
+        const queryRunner = registrationRepository.transaction();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+
+        const registration = await registrationRepository.findById(id, queryRunner);
+        if (!registration) {
+            return res.status(404).json({
+                message: `Registration with ID ${id} not found`
+            });
+        }
+
+        if (registration.status === RegistrationStatus.ACTIVE) {
+            await registrationService.unregister(registration.did);
+        }
+        await registrationRepository.delete(id, queryRunner);
+        logger.info(`Registration ${id} deleted by admin.`);
+
+        await queryRunner.commitTransaction();
+
+        res.status(200).json({
+            message: `Registration with ID ${id} has been deleted`
+        });
+    } catch (error) {
+        logger.error('Error deleting registration:', error);
+        res.status(500).json({
+            message: 'Error deleting the registration record',
+            error: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
+});
+
 router.put('/admin/registrations/:id', authFilter, async (req: Request, res: Response) => {
     const { id } = req.params;
     const { status, reason } = req.body;
@@ -91,7 +126,7 @@ router.put('/admin/registrations/:id', authFilter, async (req: Request, res: Res
         // Update realm and TIR
         if (prevRegistration.status !== RegistrationStatus.ACTIVE && status === RegistrationStatus.ACTIVE) {
             await registrationService.register(registration.did);
-        } else if(prevRegistration.status === RegistrationStatus.ACTIVE && status !== RegistrationStatus.ACTIVE) {
+        } else if (prevRegistration.status === RegistrationStatus.ACTIVE && status !== RegistrationStatus.ACTIVE) {
             await registrationService.unregister(registration.did);
         }
 
@@ -110,13 +145,13 @@ router.put('/admin/registrations/:id', authFilter, async (req: Request, res: Res
                 serverOrigin: (req as any).serverOrigin
             }
             await emailService.sendUpdateEmail(registration.email, mailContext)
-        } catch(error){
+        } catch (error) {
             logger.warn('Unable to send update email.', error)
         }
-    } catch(error) {
+    } catch (error) {
         logger.error('Unable to update status.', error);
         await queryRunner.rollbackTransaction();
-        res.status(500).send({error: 'Error updating status'})
+        res.status(500).send({ error: 'Error updating status' })
     } finally {
         await queryRunner.release();
     }
