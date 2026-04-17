@@ -8,12 +8,10 @@ class DidService {
     }
     generateDid(realm: string): string {
 
-        const subpath = Buffer.from(realm).toString('base64');
-        return `${this.didWebHost}:${subpath}`;
+        return `${this.didWebHost}:${realm}`;
     }
     getRealmFromDid(did: string): string {
-        const realmBase64 = did.split(':').at(-1) || '';
-        return Buffer.from(realmBase64, 'base64').toString('utf-8');
+        return did.split(':').at(-1) || '';
     }
 }
 

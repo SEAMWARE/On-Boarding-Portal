@@ -51,10 +51,12 @@ class KeycloakService {
             REALM: realm,
             ID: realm
         }
+
         let config = { ...this._getDefaultConfig(context), id: realm, realm, displayName: `Onboarding '${email}'` }
         this._addKeyProvider(this.config.keys.curveType, did, config);
 
         await this._authClient();
+        logger.debug(`Creating realm '${realm}' with config: ${JSON.stringify(config)}`)
         const { realmName } = await this.adminClient.realms.create(config as RealmRepresentation)
         logger.info(`Created realm '${realm}'`)
 

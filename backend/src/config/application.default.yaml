@@ -27,24 +27,24 @@ database:
   type: postgres
   host: localhost
   port: 5432
-  username: ''
-  password: ''
+  username: ""
+  password: ""
   database: onboarding
   synchronize: true
   logging: false
   # Force UTC timezone for date storage. Ignored by PostgreSQL driver, required for MySQL to store dates in UTC.
-  timezone: 'Z'
+  timezone: "Z"
 app:
   login:
-    openIdUrl: ''
-    clientId: ''
-    clientSecret: ''
+    openIdUrl: ""
+    clientId: ""
+    clientSecret: ""
     scope: openid
     codeChallenge: true
   keycloak:
     realmName: master
     grantType: password
-    clientId: 'admin-cli'
+    clientId: "admin-cli"
     realmNameLength: 36
     adminPasswordLength: 30
     adminEmailLifespan: 72h
@@ -128,7 +128,7 @@ app:
         vc.user-sd.credential_signing_alg_values_supported: ES256
         vc.user-sd.credential_build_config.token_jws_type: vc+sd-jwt
         vc.user-sd.credential_build_config.visible_claims: roles,email
-        vc.user-sd.credential_build_config.proof_types_supported: '{"jwt":{"proof_signing_alg_values_supported":["ES256"]}}'
+        vc.user-sd.credential_build_config.proof_types_supported: "{\"jwt\":{\"proof_signing_alg_values_supported\":[\"ES256\"]}}"
         vc.user-sd.credential_build_config.decoys: "3"
         vc.user-sd.credential_build_config.signing_algorithm: ES256
       clients:
@@ -191,11 +191,11 @@ app:
   tir: {}
 email:
   enabled: false
-  type: 'nodemailer'
-  from: 'onboarding@seamware.com'
+  type: "nodemailer"
+  from: "onboarding@seamware.com"
   update:
-    subject: 'OnBoarding Portal - Registration updated'
-    html: 'file://./templates/update.html'
+    subject: "OnBoarding Portal - Registration updated"
+    html: "file://./templates/update.html"
   submit:
-    subject: 'OnBoarding Portal - Registration submited'
-    html: 'file://./templates/submit.html'
+    subject: "OnBoarding Portal - Registration submited"
+    html: "file://./templates/submit.html"
