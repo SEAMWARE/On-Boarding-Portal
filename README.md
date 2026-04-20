@@ -5,6 +5,7 @@ A self-service portal that allows organizations to register on a decentralized t
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
+- [Onboarding Flow](#onboarding-flow)
 - [Configuration](#configuration)
 - [Running Locally (Development)](#running-locally-development)
 - [Running with Docker](#running-with-docker)
@@ -25,6 +26,62 @@ A self-service portal that allows organizations to register on a decentralized t
 | TIR | — | Trust Issuer Registry (optional) |
 
 > **did-helper** must be configured with Keycloak integration enabled so that newly created realms can resolve their `did:web` documents. The portal calls did-helper to register the DID after provisioning each realm — without it, verifiable credential issuance will not work. Point `didGenerator.didWebHost` in `application.yaml` to the domain served by your did-helper instance.
+
+## Onboarding Flow
+
+The following describes the end-to-end lifecycle of an organization joining the trust infrastructure.
+
+> **DID-provided registrations:** This full workflow only applies when the applicant does **not** supply a DID at registration time. If a DID is provided, the portal skips Keycloak realm provisioning entirely (Steps 2–4 below are not performed). TIR registration still occurs in both cases.
+
+### Step 1 — Registration request
+
+A representative of the new organization fills in the registration form in the portal and submits it. The portal saves the request and sends a confirmation email to the applicant.
+
+### Step 2 — Admin review
+
+A portal administrator reviews the pending request in the admin panel. Once satisfied, the admin approves the application. The portal then automatically:
+
+- Provisions a dedicated Keycloak realm for the organization.
+- Generates a `did:web` identifier and registers it with the did-helper.
+- Registers the organization in the Trust Issuer Registry (TIR).
+
+### Step 3 — Welcome emails
+
+Upon approval the organization contact receives **two emails**:
+
+1. **Keycloak email** — sent by the newly provisioned realm asking the user to verify their information and set a password (triggered by the `VERIFY_EMAIL` and `UPDATE_PASSWORD` required actions configured in `adminUserConfig`).
+2. **Portal activation email** — sent by the portal with two action buttons:
+   - **Admin panel** — opens the Keycloak admin console for the organization's realm.
+   - **Credentials** — opens the credential issuance interface.
+
+> **Email delivery:** For Keycloak to send the verification email, the SMTP server must be configured in `app.keycloak.defaultRealmConfig.smtpServer`. Without it, the Keycloak email in step 3 will not be delivered. Example:
+> ```yaml
+> app:
+>   keycloak:
+>     defaultRealmConfig:
+>       smtpServer:
+>         auth: true
+>         from: onboarding@seamware.io
+>         fromDisplayName: Onboarding Auth
+>         host: smtp.ethereal.email
+>         password: ${EMAIL_PASSWORD}
+>         port: 587
+>         ssl: false
+>         starttls: true
+>         user: ${EMAIL_USER}
+> ```
+
+> **Important:** The default admin user created automatically in each realm (configured via `app.keycloak.adminUserConfig`) has realm-management privileges but **cannot issue Verifiable Credentials**. VC issuance requires a regular user with the `consumer` role assigned (see Step 4).
+
+### Step 4 — User provisioning
+
+The organization admin must log into the Keycloak admin console and create end users within their realm. Each user that needs to issue VCs must be assigned the **`consumer`** role, which is defined by default in the provisioned realm.
+
+```
+Admin console → Users → Add user → Assign role: consumer
+```
+
+---
 
 ## Configuration
 
@@ -100,12 +157,116 @@ app:
     adminPasswordLength: 30          # Length of generated admin passwords
     adminEmailLifespan: 72h          # Expiry of the admin welcome email action link
 
+    # Admin user created inside each provisioned realm
+    adminUserConfig:
+      enabled: true                  # Create the admin user (disable to skip user creation)
+      username: admin                # Username for the realm admin
+      emailVerified: false           # Whether the email is pre-verified
+      groups:
+        - /admin
+      clientRoles:                   # Client roles assigned to the admin user
+        realm-management:
+          - manage-users
+          - query-groups
+          - query-users
+          - view-users
+        account:
+          - manage-account
+          - view-groups
+          - view-profile
+      realmRoles: []
+      requiredActions:               # Actions forced on first login
+        - VERIFY_EMAIL
+        - UPDATE_PASSWORD
+
     # Elliptic curve for signing keys
     keys:
       curveType: P-256               # P-256 | P-384 | P-521
 
-    # SMTP for newly created Keycloak realms
+    # Additional client scopes added to every provisioned realm (OID4VC credential scopes)
+    additionalClientScopes:
+      - name: LegalPersonCredential
+        description: OIDC4VC Scope, that adds all properties required for a user.
+        protocol: openid-connect
+        attributes:
+          include.in.token.scope: "false"
+          display.on.consent.screen: "false"
+        protocolMappers:             # OID4VC mappers for SD-JWT credential issuance
+          - name: context-mapper
+            protocol: oid4vc
+            protocolMapper: oid4vc-context-mapper
+            config:
+              context: https://www.w3.org/2018/credentials/v1
+              supportedCredentialTypes: LegalPersonCredential
+          - name: firstName-mapper
+            protocol: oid4vc
+            protocolMapper: oid4vc-user-attribute-mapper
+            config:
+              subjectProperty: firstName
+              supportedCredentialTypes: LegalPersonCredential
+              userAttribute: firstName
+          - name: email-mapper
+            protocol: oid4vc
+            protocolMapper: oid4vc-user-attribute-mapper
+            config:
+              subjectProperty: email
+              supportedCredentialTypes: LegalPersonCredential
+              userAttribute: email
+          - name: lastName-mapper
+            protocol: oid4vc
+            protocolMapper: oid4vc-user-attribute-mapper
+            config:
+              subjectProperty: lastName
+              supportedCredentialTypes: LegalPersonCredential
+              userAttribute: lastName
+          - name: role-mapper
+            protocol: oid4vc
+            protocolMapper: oid4vc-target-role-mapper
+            config:
+              subjectProperty: roles
+              supportedCredentialTypes: LegalPersonCredential
+              clientId: ${DID}
+
+    # Template applied to every newly created Keycloak realm
     defaultRealmConfig:
+      verifiableCredentialsEnabled: true   # Enable OID4VC on the realm
+      attributes:
+        preAuthorizedCodeLifespanS: 120    # Pre-authorized code lifetime (seconds)
+        issuerDid: ${DID}                  # Resolved at runtime — see placeholder table below
+        # SD-JWT credential profile
+        vc.user-sd.expiry_in_s: "31536000"
+        vc.user-sd.format: vc+sd-jwt
+        vc.user-sd.scope: LegalPersonCredential
+        vc.user-sd.vct: LegalPersonCredential
+        vc.user-sd.credential_signing_alg_values_supported: ES256
+        vc.user-sd.credential_build_config.token_jws_type: vc+sd-jwt
+        vc.user-sd.credential_build_config.visible_claims: roles,email
+        vc.user-sd.credential_build_config.decoys: "3"
+        vc.user-sd.credential_build_config.signing_algorithm: ES256
+      clients:
+        - clientId: ${DID}               # One OIDC client per realm, keyed by its DID
+          enabled: true
+          protocol: openid-connect
+          publicClient: false
+          serviceAccountsEnabled: true
+          directAccessGrantsEnabled: true
+      components:
+        org.keycloak.protocol.oid4vc.issuance.credentialbuilder.CredentialBuilder:
+          - name: sd-jwt-builder           # SD-JWT credential builder
+            providerId: vc+sd-jwt
+          - name: jwt-vc-builder           # JWT-VC credential builder
+            providerId: jwt_vc
+      defaultDefaultClientScopes: [acr, roles, role_list, email, web-origins, profile]
+      defaultOptionalClientScopes: [LegalPersonCredential]
+      groups:
+        - name: admin                      # Admin group with realm-management roles
+          clientRoles:
+            realm-management:
+              - manage-users
+              - manage-realm
+              - query-users
+              - query-groups
+              - view-users
       smtpServer:
         host: smtp.example.com
         port: "587"
@@ -140,6 +301,9 @@ email:
   update:
     subject: "OnBoarding Portal - Registration updated"
     html: "file://./templates/update.html"
+  active:
+    subject: "OnBoarding Portal - Registration activated"
+    html: "file://./templates/active.html"
 
 # ──────────────────────────────────────────────
 # DID generation
