@@ -7,6 +7,7 @@ A self-service portal that allows organizations to register on a decentralized t
 - [Prerequisites](#prerequisites)
 - [Onboarding Flow](#onboarding-flow)
 - [Configuration](#configuration)
+- [Enabling Dynamic DID Generation](#enabling-dynamic-did-generation)
 - [Running Locally (Development)](#running-locally-development)
 - [Running with Docker](#running-with-docker)
 - [Deploying with Helm (Kubernetes)](#deploying-with-helm-kubernetes)
@@ -26,12 +27,25 @@ A self-service portal that allows organizations to register on a decentralized t
 | TIR | — | Trust Issuer Registry (optional) |
 
 > **did-helper** must be configured with Keycloak integration enabled so that newly created realms can resolve their `did:web` documents. The portal calls did-helper to register the DID after provisioning each realm — without it, verifiable credential issuance will not work. Point `didGenerator.didWebHost` in `application.yaml` to the domain served by your did-helper instance.
+>
+> The following did-helper configuration is required to enable Keycloak-backed DID resolution:
+>
+> ```yaml
+> config:
+>   server:
+>     runServer: "true"
+>     didType: keycloak
+>     keycloakHost: https://<your-keycloak-host>
+>     outputFormat: "none"
+> ```
 
 ## Onboarding Flow
 
 The following describes the end-to-end lifecycle of an organization joining the trust infrastructure.
 
 > **DID-provided registrations:** This full workflow only applies when the applicant does **not** supply a DID at registration time. If a DID is provided, the portal skips Keycloak realm provisioning entirely (Steps 2–4 below are not performed). TIR registration still occurs in both cases.
+
+> **Dynamic DID creation:** By default the registration form requires the applicant to supply an existing DID. To let the portal generate one automatically, enable the `didCreationEnabled` flag — see [Enabling Dynamic DID Generation](#enabling-dynamic-did-generation).
 
 ### Step 1 — Registration request
 
@@ -151,6 +165,10 @@ app:
       realmName: master  # Realm where the admin user exists and has admin privileges.
                          # The user must have permission to create and delete realms
                          # (typically the built-in "admin" user in the master realm).
+
+    # Enable dynamic DID creation during realm provisioning.
+    # When false (default), applicants must supply their own DID at registration time.
+    didCreationEnabled: false
 
     # Generated realm settings
     realmNameLength: 36              # Length of randomly generated realm names
@@ -334,6 +352,40 @@ Several fields inside `app.keycloak.defaultRealmConfig` and `app.keycloak.additi
 | `${ID}` | Same value as `${REALM}`. Used wherever Keycloak requires the internal realm ID. |
 
 These placeholders allow the realm template to reference its own DID and name without hardcoding them, so every provisioned realm gets its own correctly scoped client and credential configuration.
+
+---
+
+## Enabling Dynamic DID Generation
+
+By default (`didCreationEnabled: false`) the registration form requires applicants to provide an existing DID. When dynamic generation is enabled, the portal creates a `did:web` identifier automatically during realm provisioning, so applicants do not need to supply one.
+
+### Prerequisites
+
+- A running [did-helper](https://github.com/SEAMWARE/did-helper) instance with Keycloak integration enabled. Without it the generated DID cannot be resolved and VC issuance will fail.
+
+### Configuration
+
+1. Set the flag in `application.yaml`:
+
+   ```yaml
+   app:
+     keycloak:
+       didCreationEnabled: true
+   ```
+
+2. Point `didGenerator.didWebHost` at the domain served by your did-helper instance:
+
+   ```yaml
+   didGenerator:
+     didWebHost: did:web:example.com   # base domain for generated did:web identifiers
+   ```
+
+   At provisioning time the portal derives the full DID by appending the generated realm name: `did:web:example.com:<realm-name>`.
+
+### Behavior when the flag is `false` (default)
+
+- The registration form shows a DID input field and will not accept submissions without one.
+- The portal skips DID generation entirely on approval; the applicant-supplied DID is used for Keycloak realm configuration and TIR registration.
 
 ---
 
