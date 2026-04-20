@@ -77,7 +77,10 @@ appServer.use((_req, res) => {
 
 (async () => {
   try {
-    renderedIndex = await ejs.renderFile(indexPath, { documentToSignUrl: app.documentToSignUrl });
+    renderedIndex = await ejs.renderFile(indexPath, {
+      documentToSignUrl: app.documentToSignUrl,
+      didCreationEnabled: app.keycloak.didCreationEnabled
+    });
     await initializeDatabase()
   } catch (error) {
     logger.error('Error connecting to the database', error);

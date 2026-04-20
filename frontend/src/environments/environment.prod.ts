@@ -1,7 +1,8 @@
 import { Config } from "../models/config";
-import { getHostUrl, getMetadata } from "./metadata.service";
+import { getHostUrl, getMetadata, getMetadataAsBoolean } from "./metadata.service";
 
 export const environment: Config = {
   serverHost: getHostUrl(),
-  documentToSignUrl: getMetadata('documentToSignUrl', '')!
+  documentToSignUrl: getMetadata('documentToSignUrl', '')!,
+  didCreationEnabled: getMetadataAsBoolean('didCreationEnabled', false)!
 }

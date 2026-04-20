@@ -42,6 +42,7 @@ app:
     scope: openid
     codeChallenge: true
   keycloak:
+    didCreationEnabled: false
     realmName: master
     grantType: password
     clientId: "admin-cli"

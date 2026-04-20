@@ -21,7 +21,11 @@ router.post('/registrations/submit', uploadFiles('files', { maxCount: 5, allowed
 
         logger.debug(`Files received: ${uploadedFiles ? uploadedFiles.length : 0}`);
 
+
         if (!data.did) {
+            if (!keycloakService.config.didCreationEnabled) {
+                return res.status(400).json({ error: 'DID is required' })
+            }
             const did = keycloakService.createDidRealm();
             data.did = did;
             data.didGenerated = true;

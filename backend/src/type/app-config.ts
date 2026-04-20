@@ -51,6 +51,7 @@ export interface TirConfig {
 }
 
 export interface KeycloakConfig {
+    didCreationEnabled: boolean;
     baseUrl: string;
     realmName: string;
     defaultRealmConfig: Omit<RealmRepresentation, 'realm' | 'id'>;
