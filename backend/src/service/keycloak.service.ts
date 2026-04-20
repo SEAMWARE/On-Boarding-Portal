@@ -59,6 +59,7 @@ class KeycloakService {
         logger.debug(`Creating realm '${realm}' with config: ${JSON.stringify(config)}`)
         const { realmName } = await this.adminClient.realms.create(config as RealmRepresentation)
         logger.info(`Created realm '${realm}'`)
+        await this._removeDefaultKeyProviders(realm);
 
         if (this.config.additionalClientScopes) {
             await this._processClientScopes(this.config.additionalClientScopes, context);
@@ -127,6 +128,18 @@ class KeycloakService {
         await this.adminClient.auth(this.config.auth)
     }
 
+    private async _removeDefaultKeyProviders(realm: string): Promise<void> {
+        const components = await this.adminClient.components.find({
+            realm,
+            type: 'org.keycloak.keys.KeyProvider',
+        });
+
+        const toRemove = components.filter(c => c.name?.toLowerCase().includes('fallback'));
+        logger.info(`Removing ${toRemove.length} fallback key providers from realm '${realm}'`);
+
+        await Promise.all(toRemove.map(c => this.adminClient.components.del({ realm, id: c.id! })));
+    }
+
     private _addKeyProvider(curve: string, kid: string, config: any = {}): any {
 
         const key = {
@@ -137,7 +150,6 @@ class KeycloakService {
                 ecdsaEllipticCurveKey: [curve],
                 active: ["true"],
                 priority: ["0"],
-                kid: [kid],
                 enabled: ["true"]
             }
         };
