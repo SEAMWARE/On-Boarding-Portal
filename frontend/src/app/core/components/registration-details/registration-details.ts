@@ -43,6 +43,7 @@ export class RegistrationDetails implements OnInit, OnDestroy {
   _registration = signal<Registration | null>(null)
   _editting = signal(false);
   statusOptions = Object.values(RegistrationStatus);
+  protected readonly RegistrationStatus = RegistrationStatus;
   registrationForm!: FormGroup;
   private destroy$?: Subscription;
 

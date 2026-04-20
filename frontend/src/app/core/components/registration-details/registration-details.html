@@ -150,5 +150,13 @@
         }
     </div>
     }
+    @if(registration().adminUrl) {
+    <div class="actions">
+        <a [href]="registration().adminUrl" target="_blank" matButton="filled" color="primary">
+            <mat-icon>manage_accounts</mat-icon>
+            Manage Users &amp; Groups
+        </a>
+    </div>
+    }
 </form>
 }

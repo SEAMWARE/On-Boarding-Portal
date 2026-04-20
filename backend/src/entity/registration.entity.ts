@@ -1,6 +1,7 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import { FileMetadata } from "../type/file-metadata";
 import { configService } from "../service/config.service";
+import { keycloakService } from "../service/keycloak.service";
 
 const dbType = configService.get().database.type;
 const DATE_COLUMN_TYPE = dbType === 'mysql' ? 'datetime' : 'timestamptz';
@@ -58,8 +59,13 @@ export class Registration {
 
     files?: FileMetadata[];
 
+    adminUrl?: string;
+
     toJSON() {
         const { filesPath, ...registration } = this;
+        if (this.status === RegistrationStatus.ACTIVE && this.didGenerated) {
+            registration.adminUrl = keycloakService.getAdminUrl(this.did)
+        }
         return registration;
     }
 }

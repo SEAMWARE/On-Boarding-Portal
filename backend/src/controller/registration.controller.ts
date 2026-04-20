@@ -74,20 +74,19 @@ router.get('/registrations/submit/:id', async (req, res) => {
             });
             return
         }
-        const { filesPath, ...response } = registration;
-        res.json(response);
+        res.json(registration);
     } catch (error) {
         logger.error(`Error getting registration '${id}'`, error)
         res.status(404).json({ message: `Registration '${id}' does not found` });
     }
 
 })
-router.put('/registrations/submit/:id',uploadFiles('files', { maxCount: 5, allowedTypes: /pdf/ }), async (req, res) => {
+router.put('/registrations/submit/:id', uploadFiles('files', { maxCount: 5, allowedTypes: /pdf/ }), async (req, res) => {
     const id = req.params.id as string;
     const data = req.body as RegistrationUpdate;
     const uploadedFiles = req.files as Express.Multer.File[];
     if (!data || !uploadedFiles) {
-        return res.status(400).send({error: 'Email, DID or file field is required'})
+        return res.status(400).send({ error: 'Email, DID or file field is required' })
     }
     const allowedStatus = [RegistrationStatus.ACTION_REQUIRED, RegistrationStatus.SUBMITTED]
     const queryRunner = registrationRepository.transaction();
@@ -96,7 +95,7 @@ router.put('/registrations/submit/:id',uploadFiles('files', { maxCount: 5, allow
     try {
         const prevRegistration = await registrationRepository.findById(id, queryRunner);
         if (!prevRegistration) {
-                        return res.status(404).json({
+            return res.status(404).json({
                 message: `Registration with ID ${id} not found`
             });
         }
@@ -121,10 +120,10 @@ router.put('/registrations/submit/:id',uploadFiles('files', { maxCount: 5, allow
         }
 
         res.status(200).json(registration);
-    } catch(error) {
+    } catch (error) {
         logger.error('Unable to update registration', error);
         await queryRunner.rollbackTransaction();
-        res.status(500).send({error: 'Error updating registration'});
+        res.status(500).send({ error: 'Error updating registration' });
     } finally {
         await queryRunner.release()
     }

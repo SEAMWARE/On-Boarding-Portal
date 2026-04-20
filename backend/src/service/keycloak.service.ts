@@ -85,7 +85,7 @@ class KeycloakService {
 
     getAdminUrl(did: string): string {
         const realm = didService.getRealmFromDid(did);
-        return `${this.config.baseUrl}/realms/${realm}/console`;
+        return `${this.config.baseUrl}/admin/${realm}/console`;
     }
 
     getAccountUrl(did: string): string {
