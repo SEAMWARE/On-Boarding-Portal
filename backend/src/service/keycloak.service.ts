@@ -83,6 +83,16 @@ class KeycloakService {
         logger.info(`Deleted realm '${realm}'`)
     }
 
+    getAdminUrl(did: string): string {
+        const realm = didService.getRealmFromDid(did);
+        return `${this.config.baseUrl}/realms/${realm}/console`;
+    }
+
+    getAccountUrl(did: string): string {
+        const realm = didService.getRealmFromDid(did);
+        return `${this.config.baseUrl}/realms/${realm}/account`;
+    }
+
     private async _assignScopeToClients(scopeId: string, clientUuids: string[], realm: string, type: ClientScope['type']): Promise<void> {
         const assign = type === 'default'
             ? (id: string) => this.adminClient.clients.addDefaultClientScope({ id, realm, clientScopeId: scopeId })

@@ -77,6 +77,7 @@ export interface BaseEmailConfig {
     from: string;
     update: MailTemplate
     submit: MailTemplate
+    active: MailTemplate
 }
 
 export interface NodemailerConfig extends BaseEmailConfig {

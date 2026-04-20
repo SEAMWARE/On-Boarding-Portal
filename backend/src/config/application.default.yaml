@@ -199,3 +199,6 @@ email:
   submit:
     subject: "OnBoarding Portal - Registration submited"
     html: "file://./templates/submit.html"
+  active:
+    subject: "OnBoarding Portal - Registration activated"
+    html: "file://./templates/active.html"

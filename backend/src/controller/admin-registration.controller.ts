@@ -9,6 +9,7 @@ import emailService from "../service/email.service";
 import { logger } from "../service/logger";
 import { registrationService } from "../service/registration.service";
 import { MailContext } from "../type/main-context";
+import { keycloakService } from "../service/keycloak.service";
 
 const router = Router()
 
@@ -142,7 +143,9 @@ router.put('/admin/registrations/:id', authFilter, async (req: Request, res: Res
             const mailContext: MailContext = {
                 registration,
                 previousState: prevRegistration.status,
-                serverOrigin: (req as any).serverOrigin
+                serverOrigin: (req as any).serverOrigin,
+                accountUrl: keycloakService.getAccountUrl(registration.did),
+                adminUrl: keycloakService.getAdminUrl(registration.did)
             }
             await emailService.sendUpdateEmail(registration.email, mailContext)
         } catch (error) {
