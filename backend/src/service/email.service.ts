@@ -65,7 +65,7 @@ class NodemailerEmailService extends BaseMailService {
     }
 
     async sendUpdateEmail(email: string, mailContext: MailContext): Promise<void> {
-        const template = this._getTemplate(this.emailConfig.submit.html, mailContext)
+        const template = this._getTemplate(this.emailConfig.update.html, mailContext)
         await this.transport.sendMail({
             from: this.emailConfig.from,
             to: email,
