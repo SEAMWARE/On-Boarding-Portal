@@ -138,6 +138,7 @@ database:
   database: onboarding
   synchronize: true        # Auto-sync schema on startup. Set to false in production
   logging: false           # Log SQL queries
+  timezone: "Z"            # Force UTC for date storage (required for MySQL; ignored by PostgreSQL)
 
 # ──────────────────────────────────────────────
 # Application
@@ -247,6 +248,7 @@ app:
 
     # Template applied to every newly created Keycloak realm
     defaultRealmConfig:
+      enabled: true                        # Activate the realm immediately after creation
       verifiableCredentialsEnabled: true   # Enable OID4VC on the realm
       attributes:
         preAuthorizedCodeLifespanS: 120    # Pre-authorized code lifetime (seconds)
@@ -259,6 +261,7 @@ app:
         vc.user-sd.credential_signing_alg_values_supported: ES256
         vc.user-sd.credential_build_config.token_jws_type: vc+sd-jwt
         vc.user-sd.credential_build_config.visible_claims: roles,email
+        vc.user-sd.credential_build_config.proof_types_supported: '{"jwt":{"proof_signing_alg_values_supported":["ES256"]}}'
         vc.user-sd.credential_build_config.decoys: "3"
         vc.user-sd.credential_build_config.signing_algorithm: ES256
       clients:
