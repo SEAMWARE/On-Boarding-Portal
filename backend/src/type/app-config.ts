@@ -1,4 +1,6 @@
+import ClientScopeRepresentation from "@keycloak/keycloak-admin-client/lib/defs/clientScopeRepresentation";
 import RealmRepresentation from "@keycloak/keycloak-admin-client/lib/defs/realmRepresentation";
+import UserRepresentation from "@keycloak/keycloak-admin-client/lib/defs/userRepresentation";
 import { Credentials } from "@keycloak/keycloak-admin-client/lib/utils/auth";
 import { CorsOptions } from "cors";
 import SMTPPool from "nodemailer/lib/smtp-pool";
@@ -10,6 +12,8 @@ export interface AppConfig {
     app: AppCfg
     database: DataSourceOptions;
     email: EmailConfig;
+    documentToSignUrl: string;
+    didGenerator: DidGeneratorConfig
 }
 
 export interface ServerConfig {
@@ -17,6 +21,8 @@ export interface ServerConfig {
     staticPath: string;
     cors: CorsOptions;
     storage: StorageConfig;
+    trustProxy: number | boolean;
+    jsonBodyLimit: string;
 }
 
 export interface Logging {
@@ -45,9 +51,17 @@ export interface TirConfig {
 }
 
 export interface KeycloakConfig {
+    didCreationEnabled: boolean;
     baseUrl: string;
+    realmName: string;
     defaultRealmConfig: Omit<RealmRepresentation, 'realm' | 'id'>;
     auth: Credentials;
+    keys: { curveType: string };
+    realmNameLength: number;
+    additionalClientScopes: ClientScope[];
+    adminPasswordLength: number;
+    adminEmailLifespan: string;
+    adminUserConfig: UserRepresentation;
 }
 
 export interface StorageConfig {
@@ -64,6 +78,7 @@ export interface BaseEmailConfig {
     from: string;
     update: MailTemplate
     submit: MailTemplate
+    active: MailTemplate
 }
 
 export interface NodemailerConfig extends BaseEmailConfig {
@@ -72,3 +87,11 @@ export interface NodemailerConfig extends BaseEmailConfig {
 }
 
 export type EmailConfig = NodemailerConfig;
+
+export interface DidGeneratorConfig {
+    didWebHost: string
+}
+
+export interface ClientScope extends ClientScopeRepresentation {
+    type?: 'default' | 'optional' | 'none'
+}

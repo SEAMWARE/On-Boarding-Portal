@@ -35,7 +35,7 @@ class OidcService {
             if (codeChallenge) {
                 params.code_challenge_method = 'S256';
                 const verifier = client.randomPKCECodeVerifier()
-                res.cookie('pkce_verifier', verifier, { httpOnly: req.protocol === 'https', maxAge: VERIFIER_MAX_AGE_MS });
+                res.cookie('pkce_verifier', verifier, { httpOnly: true, secure: req.protocol === 'https', sameSite: 'strict', path: '/', maxAge: VERIFIER_MAX_AGE_MS });
                 params.code_challenge = await client.calculatePKCECodeChallenge(verifier);
             }
             const redirectToUrl: URL = client.buildAuthorizationUrl(issuer, params);
@@ -137,8 +137,10 @@ class OidcService {
     }
 
     private _setTokenCookie(token: client.TokenEndpointResponse, req: Request, res: Response) {
-        res.cookie('authorization', token.access_token, { httpOnly: req.protocol === 'https', maxAge: token.expires_in ? token.expires_in * 1000 : undefined });
-        res.cookie('refresh_token', token.refresh_token, { httpOnly: req.protocol === 'https' });
+        const isHttps = req.protocol === 'https';
+        const cookieOptions = { httpOnly: true, secure: isHttps, sameSite: 'strict' as const, path: '/' };
+        res.cookie('authorization', token.access_token, { ...cookieOptions, maxAge: token.expires_in ? token.expires_in * 1000 : undefined });
+        res.cookie('refresh_token', token.refresh_token, cookieOptions);
     }
 }
 

@@ -7,6 +7,7 @@ import { RegistrationStatus } from "../entity/registration.entity";
 import { storageService } from "../service/storage.service";
 import { uploadFiles } from "../middleware/storage.middleware";
 import { MailContext } from "../type/main-context";
+import { keycloakService } from "../service/keycloak.service";
 
 const router = Router()
 
@@ -20,6 +21,15 @@ router.post('/registrations/submit', uploadFiles('files', { maxCount: 5, allowed
 
         logger.debug(`Files received: ${uploadedFiles ? uploadedFiles.length : 0}`);
 
+
+        if (!data.did) {
+            if (!keycloakService.config.didCreationEnabled) {
+                return res.status(400).json({ error: 'DID is required' })
+            }
+            const did = keycloakService.createDidRealm();
+            data.did = did;
+            data.didGenerated = true;
+        }
         filesPath = storageService.getFilesPath(data.did);
         registration = await registrationRepository.save({ ...data, filesPath });
 
@@ -68,20 +78,19 @@ router.get('/registrations/submit/:id', async (req, res) => {
             });
             return
         }
-        const { filesPath, ...response } = registration;
-        res.json(response);
+        res.json(registration);
     } catch (error) {
         logger.error(`Error getting registration '${id}'`, error)
         res.status(404).json({ message: `Registration '${id}' does not found` });
     }
 
 })
-router.put('/registrations/submit/:id',uploadFiles('files', { maxCount: 5, allowedTypes: /pdf/ }), async (req, res) => {
+router.put('/registrations/submit/:id', uploadFiles('files', { maxCount: 5, allowedTypes: /pdf/ }), async (req, res) => {
     const id = req.params.id as string;
     const data = req.body as RegistrationUpdate;
     const uploadedFiles = req.files as Express.Multer.File[];
-    if (!data || !uploadFiles) {
-        return res.status(400).send({error: 'Email, DID or file field is required'})
+    if (!data || !uploadedFiles) {
+        return res.status(400).send({ error: 'Email, DID or file field is required' })
     }
     const allowedStatus = [RegistrationStatus.ACTION_REQUIRED, RegistrationStatus.SUBMITTED]
     const queryRunner = registrationRepository.transaction();
@@ -90,7 +99,7 @@ router.put('/registrations/submit/:id',uploadFiles('files', { maxCount: 5, allow
     try {
         const prevRegistration = await registrationRepository.findById(id, queryRunner);
         if (!prevRegistration) {
-                        return res.status(404).json({
+            return res.status(404).json({
                 message: `Registration with ID ${id} not found`
             });
         }
@@ -106,19 +115,19 @@ router.put('/registrations/submit/:id',uploadFiles('files', { maxCount: 5, allow
             delete data.filesPath;
         }
 
-        // This can cause error if update fails
+        const registration = (await registrationRepository.updateInfo(id, data, queryRunner))!;
+
+        await queryRunner.commitTransaction();
+
         if (uploadedFiles?.length > 0 || data.did !== prevRegistration.did) {
             await storageService.updateFiles(prevRegistration.did, data.did || prevRegistration.did, uploadedFiles)
         }
 
-        const registration = (await registrationRepository.updateInfo(id, data, queryRunner))!;
-
-        await queryRunner.commitTransaction();
         res.status(200).json(registration);
-    } catch(error) {
+    } catch (error) {
         logger.error('Unable to update registration', error);
         await queryRunner.rollbackTransaction();
-        res.status(500).send({error: 'Error updating registration'});
+        res.status(500).send({ error: 'Error updating registration' });
     } finally {
         await queryRunner.release()
     }

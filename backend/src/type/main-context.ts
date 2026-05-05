@@ -4,4 +4,6 @@ export interface MailContext {
     registration: Registration;
     previousState?: RegistrationStatus;
     serverOrigin: string;
+    accountUrl?: string;
+    adminUrl?: string;
 }

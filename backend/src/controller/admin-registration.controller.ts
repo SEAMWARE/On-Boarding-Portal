@@ -9,6 +9,7 @@ import emailService from "../service/email.service";
 import { logger } from "../service/logger";
 import { registrationService } from "../service/registration.service";
 import { MailContext } from "../type/main-context";
+import { keycloakService } from "../service/keycloak.service";
 
 const router = Router()
 
@@ -89,7 +90,7 @@ router.delete('/admin/registrations/:id', authFilter, async (req: Request, res: 
         }
 
         if (registration.status === RegistrationStatus.ACTIVE) {
-            await registrationService.unregister(registration.did);
+            await registrationService.unregister(registration.did, registration.didGenerated);
         }
         await registrationRepository.delete(id, queryRunner);
         logger.info(`Registration ${id} deleted by admin.`);
@@ -125,9 +126,9 @@ router.put('/admin/registrations/:id', authFilter, async (req: Request, res: Res
 
         // Update realm and TIR
         if (prevRegistration.status !== RegistrationStatus.ACTIVE && status === RegistrationStatus.ACTIVE) {
-            await registrationService.register(registration.did);
+            await registrationService.register(registration);
         } else if (prevRegistration.status === RegistrationStatus.ACTIVE && status !== RegistrationStatus.ACTIVE) {
-            await registrationService.unregister(registration.did);
+            await registrationService.unregister(registration.did, registration.didGenerated);
         }
 
         await queryRunner.commitTransaction();
@@ -142,7 +143,9 @@ router.put('/admin/registrations/:id', authFilter, async (req: Request, res: Res
             const mailContext: MailContext = {
                 registration,
                 previousState: prevRegistration.status,
-                serverOrigin: (req as any).serverOrigin
+                serverOrigin: (req as any).serverOrigin,
+                accountUrl: keycloakService.getAccountUrl(registration.did),
+                adminUrl: keycloakService.getAdminUrl(registration.did)
             }
             await emailService.sendUpdateEmail(registration.email, mailContext)
         } catch (error) {

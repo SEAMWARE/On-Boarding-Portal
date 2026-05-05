@@ -41,7 +41,11 @@ export class StorageService {
 
     async getFilePath(directoryPath: string, fileName: string): Promise<string | null> {
         try {
-            const fullPath = path.join(directoryPath, fileName);
+            const fullPath = path.resolve(directoryPath, fileName);
+
+            if (!fullPath.startsWith(path.resolve(directoryPath) + path.sep)) {
+                return null;
+            }
 
             await fs.access(fullPath);
             const stats = await fs.stat(fullPath);
@@ -80,7 +84,7 @@ export class StorageService {
             await rename(this.getFilesPath(prevDid), didFolder)
         }
         if (files?.length) {
-            await this.removeFolder(this.getFilesPath(prevDid))
+            await this.removeFolder(didFolder)
             return await this.saveFiles(did, files);
         }
         return didFolder;

@@ -4,8 +4,8 @@ import { logger, requestLogger } from './service/logger';
 import path from 'path';
 import ejs from 'ejs';
 import cors from 'cors';
+import helmet from 'helmet';
 import { initializeDatabase } from './service/data.source';
-'./service/data.source';
 
 import oidcController from './controller/openid.controller';
 import registrationController from './controller/registration.controller';
@@ -21,8 +21,19 @@ const { server, app } = configService.get();
 const angularDistPath = path.join(__dirname, server.staticPath);
 const indexPath = path.join(angularDistPath, 'index.html');
 
+appServer.set('trust proxy', server.trustProxy);
+appServer.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+      'script-src-attr': ["'unsafe-inline'"],
+      'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+      'font-src': ["'self'", 'https://fonts.gstatic.com'],
+    },
+  },
+}));
 appServer.use(cors(server.cors))
-appServer.use(express.json())
+appServer.use(express.json({ limit: server.jsonBodyLimit }))
 appServer.disable('x-powered-by');
 appServer.use(requestLogger);
 appServer.use(express.static(angularDistPath, { index: false }));
@@ -66,7 +77,10 @@ appServer.use((_req, res) => {
 
 (async () => {
   try {
-    renderedIndex = await ejs.renderFile(indexPath, { documentToSignUrl: app.documentToSignUrl });
+    renderedIndex = await ejs.renderFile(indexPath, {
+      documentToSignUrl: app.documentToSignUrl,
+      didCreationEnabled: app.keycloak.didCreationEnabled
+    });
     await initializeDatabase()
   } catch (error) {
     logger.error('Error connecting to the database', error);

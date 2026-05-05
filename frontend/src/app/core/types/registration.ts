@@ -15,6 +15,7 @@ export interface Registration {
     reason?: string;
     createdAt: Date;
     updatedAt: Date;
+    adminUrl?: string;
 }
 
 export interface FileMetadata {
