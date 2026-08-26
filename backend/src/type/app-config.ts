@@ -31,7 +31,7 @@ export interface Logging {
 }
 
 export interface TilConfig {
-    url: string | URL;
+    url: string;
     credentials?: IssuerCredentials[]
 }
 export interface AppCfg {
