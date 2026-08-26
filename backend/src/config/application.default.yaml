@@ -61,6 +61,10 @@ app:
           - query-groups
           - query-users
           - view-users
+          # Client scopes share the "clients" resource type in Keycloak's admin
+          # permission model, so this is what unlocks the Client scopes section
+          # in the Admin Console, not a separate scope-specific role.
+          - view-clients
         account:
           - manage-account
           - view-groups
@@ -81,6 +85,13 @@ app:
       attributes:
         preAuthorizedCodeLifespanS: 120
         issuerDid: ${DID}
+        # Keycloak only auto-creates the built-in default client scopes (roles, profile,
+        # email, web-origins, acr, basic, ...) when the import's `clientScopes` is absent
+        # (RealmManager#isCreateDefaultClientScopes). Since clientScopes below declares
+        # LegalPersonCredential, that auto-creation is skipped unless forced here — without
+        # it, the built-in scope names referenced by `clients[].defaultClientScopes` and
+        # `defaultDefaultClientScopes`/`defaultOptionalClientScopes` don't exist.
+        CreateDefaultClientScopes: "true"
       clients:
         - clientId: ${DID}
           enabled: true
@@ -213,6 +224,7 @@ app:
               - query-users
               - query-groups
               - view-users
+              - view-clients
     keys:
       curveType: P-256
       # kid of the signing key generated in each realm. did-helper publishes the realm's
