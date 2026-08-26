@@ -4,6 +4,7 @@ import { ClientScope, KeycloakConfig } from "../type/app-config";
 import { logger } from "./logger";
 import { configService } from "./config.service";
 import RealmRepresentation from "@keycloak/keycloak-admin-client/lib/defs/realmRepresentation";
+import ClientScopeRepresentation from "@keycloak/keycloak-admin-client/lib/defs/clientScopeRepresentation";
 import crypto from 'crypto';
 import { didService } from "./did.service";
 import { DOLLAR_REGEX, TemplateService } from "./template.service";
@@ -23,6 +24,8 @@ interface RealmContext {
     DID: string;
     REALM: string;
     ID: string;
+
+    KEY_ID: string;
 }
 
 class KeycloakService {
@@ -46,21 +49,25 @@ class KeycloakService {
     async createRealm({ did, name, email }: Registration): Promise<string> {
         const realm = didService.getRealmFromDid(did);
         logger.info(`Create realm '${realm}'`)
+        // Empty keyId falls back to the DID, which is what Keycloak uses as the default
+        // for vc.signing_key_id when the attribute is not set.
+        const keyId = this.config.keys.keyId || did;
         const context: RealmContext = {
             DID: did,
             REALM: realm,
-            ID: realm
+            ID: realm,
+            KEY_ID: keyId
         }
 
         let config = { ...this._getDefaultConfig(context), id: realm, realm, displayName: `Onboarding '${email}'` }
-        this._addKeyProvider(this.config.keys.curveType, did, config);
+        this._addKeyProvider(this.config.keys.curveType, keyId, config);
 
         await this._authClient();
         logger.debug(`Creating realm '${realm}' with config: ${JSON.stringify(config)}`)
         const { realmName } = await this.adminClient.realms.create(config as RealmRepresentation)
         logger.info(`Created realm '${realm}'`)
 
-        if (this.config.additionalClientScopes) {
+        if (this.config.additionalClientScopes?.length) {
             await this._processClientScopes(this.config.additionalClientScopes, context);
         }
         if (this.config.adminUserConfig.enabled) {
@@ -147,6 +154,7 @@ class KeycloakService {
                 ecdsaEllipticCurveKey: [curve],
                 active: ["true"],
                 priority: ["0"],
+                kid: [kid],
                 enabled: ["true"]
             }
         };
@@ -169,12 +177,33 @@ class KeycloakService {
         return JSON.parse(replaced);
     }
 
+    /**
+     * Names of the OID4VC credential scopes the realm issues, from both places they can be
+     * declared: inside the realm import (`defaultRealmConfig.clientScopes`) and through the
+     * Admin API (`additionalClientScopes`).
+     */
+    private _vcScopeNames(): string[] {
+        const all: ClientScopeRepresentation[] = [
+            ...(this.config.defaultRealmConfig.clientScopes ?? []),
+            ...(this.config.additionalClientScopes ?? []),
+        ];
+        return [...new Set(all.filter(s => s.protocol === 'oid4vc' && s.name).map(s => s.name!))];
+    }
+
     private async _createAdminUser(realm: string, email: string): Promise<AdminUser> {
 
-        const user: UserRepresentation = {
+        // Keycloak 26.4+ ties /create-credential-offer to a per-user credential list;
+        // without it the endpoint answers 400 "User 'X' does not have verifiable
+        // credential 'Y'". UserRepresentation does not declare the field, but users.create
+        // serializes the object as-is.
+        const credentialScopes = this._vcScopeNames();
+        const user: UserRepresentation & { verifiableCredentials?: { credentialScopeName: string }[] } = {
             ...this.config.adminUserConfig,
             enabled: true,
             email,
+            ...(credentialScopes.length
+                ? { verifiableCredentials: credentialScopes.map(credentialScopeName => ({ credentialScopeName })) }
+                : {}),
         }
         await this._authClient();
         logger.info(`Creating admin user '${user.username}' and email '${user.email}' in realm '${realm}'`)

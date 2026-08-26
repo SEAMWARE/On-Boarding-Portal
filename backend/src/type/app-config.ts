@@ -56,7 +56,7 @@ export interface KeycloakConfig {
     realmName: string;
     defaultRealmConfig: Omit<RealmRepresentation, 'realm' | 'id'>;
     auth: Credentials;
-    keys: { curveType: string };
+    keys: { curveType: string; keyId?: string };
     realmNameLength: number;
     additionalClientScopes: ClientScope[];
     adminPasswordLength: number;

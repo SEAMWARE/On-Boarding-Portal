@@ -21,7 +21,7 @@ A self-service portal that allows organizations to register on a decentralized t
 | Node.js | 22+ | Backend runtime |
 | pnpm | 10+ | Package manager |
 | PostgreSQL | 15+ | Data persistence |
-| Keycloak | 26+ with OID4VC | Authentication & realm provisioning |
+| Keycloak | 26.4+ with OID4VC | Authentication & realm provisioning (see [OID4VCI model](#oid4vci-credential-model) below) |
 | [did-helper](https://github.com/SEAMWARE/did-helper) | — | DID document hosting with Keycloak integration (see below) |
 | SMTP server | any | Email notifications |
 | TIR | — | Trust Issuer Registry (optional) |
@@ -38,6 +38,11 @@ A self-service portal that allows organizations to register on a decentralized t
 >     keycloakHost: https://<your-keycloak-host>
 >     outputFormat: "none"
 > ```
+>
+> did-helper publishes each realm's verification method as `<did>#<kid>`, reading the `kid`
+> straight from the realm's JWKS. Keep `app.keycloak.keys.keyId` and the credential scope's
+> `vc.signing_key_id` in sync with it, or issuance fails with
+> `No key for id '<...>' and algorithm ES256 available`.
 
 ## Onboarding Flow
 
@@ -201,50 +206,18 @@ app:
     # Elliptic curve for signing keys
     keys:
       curveType: P-256               # P-256 | P-384 | P-521
+      # kid of the signing key generated in each realm. did-helper publishes the realm's
+      # verification method as `<did>#<kid>`, and the `vc.signing_key_id` attribute of the
+      # credential scope below must resolve to this same key — otherwise issuance fails with
+      # "No key for id '<...>' and algorithm ES256 available". Leave empty to fall back to the
+      # realm DID, which is Keycloak's own default for vc.signing_key_id.
+      keyId: key-1
 
-    # Additional client scopes added to every provisioned realm (OID4VC credential scopes)
-    additionalClientScopes:
-      - name: LegalPersonCredential
-        description: OIDC4VC Scope, that adds all properties required for a user.
-        protocol: openid-connect
-        attributes:
-          include.in.token.scope: "false"
-          display.on.consent.screen: "false"
-        protocolMappers:             # OID4VC mappers for SD-JWT credential issuance
-          - name: context-mapper
-            protocol: oid4vc
-            protocolMapper: oid4vc-context-mapper
-            config:
-              context: https://www.w3.org/2018/credentials/v1
-              supportedCredentialTypes: LegalPersonCredential
-          - name: firstName-mapper
-            protocol: oid4vc
-            protocolMapper: oid4vc-user-attribute-mapper
-            config:
-              subjectProperty: firstName
-              supportedCredentialTypes: LegalPersonCredential
-              userAttribute: firstName
-          - name: email-mapper
-            protocol: oid4vc
-            protocolMapper: oid4vc-user-attribute-mapper
-            config:
-              subjectProperty: email
-              supportedCredentialTypes: LegalPersonCredential
-              userAttribute: email
-          - name: lastName-mapper
-            protocol: oid4vc
-            protocolMapper: oid4vc-user-attribute-mapper
-            config:
-              subjectProperty: lastName
-              supportedCredentialTypes: LegalPersonCredential
-              userAttribute: lastName
-          - name: role-mapper
-            protocol: oid4vc
-            protocolMapper: oid4vc-target-role-mapper
-            config:
-              subjectProperty: roles
-              supportedCredentialTypes: LegalPersonCredential
-              clientId: ${DID}
+    # Client scopes created through the Admin API *after* the realm exists, then attached to
+    # every client in it. Reserved for `openid-connect` scopes: OID4VC credential scopes belong
+    # in `defaultRealmConfig.clientScopes` (the realm import does not enforce a protocol match
+    # between a client and its scopes).
+    additionalClientScopes: []
 
     # Template applied to every newly created Keycloak realm
     defaultRealmConfig:
@@ -253,17 +226,6 @@ app:
       attributes:
         preAuthorizedCodeLifespanS: 120    # Pre-authorized code lifetime (seconds)
         issuerDid: ${DID}                  # Resolved at runtime — see placeholder table below
-        # SD-JWT credential profile
-        vc.user-sd.expiry_in_s: "31536000"
-        vc.user-sd.format: vc+sd-jwt
-        vc.user-sd.scope: LegalPersonCredential
-        vc.user-sd.vct: LegalPersonCredential
-        vc.user-sd.credential_signing_alg_values_supported: ES256
-        vc.user-sd.credential_build_config.token_jws_type: vc+sd-jwt
-        vc.user-sd.credential_build_config.visible_claims: roles,email
-        vc.user-sd.credential_build_config.proof_types_supported: '{"jwt":{"proof_signing_alg_values_supported":["ES256"]}}'
-        vc.user-sd.credential_build_config.decoys: "3"
-        vc.user-sd.credential_build_config.signing_algorithm: ES256
       clients:
         - clientId: ${DID}               # One OIDC client per realm, keyed by its DID
           enabled: true
@@ -271,12 +233,68 @@ app:
           publicClient: false
           serviceAccountsEnabled: true
           directAccessGrantsEnabled: true
-      components:
-        org.keycloak.protocol.oid4vc.issuance.credentialbuilder.CredentialBuilder:
-          - name: sd-jwt-builder           # SD-JWT credential builder
-            providerId: vc+sd-jwt
-          - name: jwt-vc-builder           # JWT-VC credential builder
-            providerId: jwt_vc
+          attributes:
+            oid4vci.enabled: "true"      # Required by KC 26.4+ for /create-credential-offer
+          optionalClientScopes:          # Optional, NOT default: a credential scope in
+            - LegalPersonCredential      # defaultClientScopes is rejected by Keycloak
+      # One ClientScope with `protocol: oid4vc` per issuable credential — the KC 26.4+ model
+      # (keycloak#39768). Declared inside the realm import so the scope already exists when the
+      # clients referencing it are created.
+      clientScopes:
+        - name: LegalPersonCredential    # The scope name IS the credential_configuration_id
+          description: OID4VC scope that issues the LegalPersonCredential.
+          protocol: oid4vc
+          attributes:
+            include.in.token.scope: "true"
+            display.on.consent.screen: "false"
+            vc.issuer_did: ${DID}
+            vc.signing_key_id: ${KEY_ID}                          # = keys.keyId above
+            vc.format: dc+sd-jwt                                  # OID4VCI 1.0 SD-JWT VC id
+            vc.verifiable_credential_type: LegalPersonCredential   # drives the SD-JWT `vct`
+            vc.supported_credential_types: LegalPersonCredential   # drives the JWT-VC `type[]`
+            vc.credential_signing_alg: ES256
+            vc.credential_build_config.token_jws_type: dc+sd-jwt
+            # Both on purpose: the admin console shows expiry_in_seconds, but the `exp` of the
+            # issued credential comes from refresh_interval_in_seconds.
+            vc.expiry_in_seconds: "31536000"
+            vc.refresh_interval_in_seconds: "31536000"
+            # Red list of KC 26.4+: iss,iat,nbf,exp,cnf,vct,status must NOT be undisclosed, or
+            # issuance aborts with "UndisclosedClaims contains red listed claim names".
+            vc.credential_build_config.sd_jwt.visible_claims: "iss,iat,nbf,exp,cnf,vct,status,roles,email"
+            vc.credential_build_config.sd_jwt.number_of_decoys: "3"
+            vc.binding_required: "true"                           # holder binding (PoP)
+            vc.binding_required_proof_types: jwt
+            vc.cryptographic_binding_methods_supported: jwk
+          protocolMappers:               # OID4VC mappers for SD-JWT credential issuance
+            - name: context-mapper
+              protocol: oid4vc
+              protocolMapper: oid4vc-context-mapper
+              config:
+                context: https://www.w3.org/2018/credentials/v1
+            - name: firstName-mapper
+              protocol: oid4vc
+              protocolMapper: oid4vc-user-attribute-mapper
+              config:
+                claim.name: firstName
+                userAttribute: firstName
+            - name: email-mapper
+              protocol: oid4vc
+              protocolMapper: oid4vc-user-attribute-mapper
+              config:
+                claim.name: email
+                userAttribute: email
+            - name: lastName-mapper
+              protocol: oid4vc
+              protocolMapper: oid4vc-user-attribute-mapper
+              config:
+                claim.name: lastName
+                userAttribute: lastName
+            - name: role-mapper
+              protocol: oid4vc
+              protocolMapper: oid4vc-target-role-mapper
+              config:
+                claim.name: roles
+                clientId: ${DID}
       defaultDefaultClientScopes: [acr, roles, role_list, email, web-origins, profile]
       defaultOptionalClientScopes: [LegalPersonCredential]
       groups:
@@ -346,15 +364,57 @@ If the variable is not set the literal string `${DB_PASSWORD}` is used — make 
 
 ### Keycloak realm template variables
 
-Several fields inside `app.keycloak.defaultRealmConfig` and `app.keycloak.additionalClientScopes` contain `${DID}`, `${REALM}`, and `${ID}` placeholders. These are **not** environment variables and must not be replaced by the operator — they are resolved automatically at runtime each time a new Keycloak realm is provisioned:
+Several fields inside `app.keycloak.defaultRealmConfig` and `app.keycloak.additionalClientScopes` contain `${DID}`, `${REALM}`, `${ID}`, and `${KEY_ID}` placeholders. These are **not** environment variables and must not be replaced by the operator — they are resolved automatically at runtime each time a new Keycloak realm is provisioned:
 
 | Placeholder | Resolved value |
 |---|---|
 | `${DID}` | Full `did:web` identifier of the newly created realm (e.g. `did:web:example.com:my-realm`). Derived from `didGenerator.didWebHost` and the generated realm name. |
 | `${REALM}` | Randomly generated realm name (alphanumeric string, length controlled by `keycloak.realmNameLength`). Used as the Keycloak realm identifier. |
 | `${ID}` | Same value as `${REALM}`. Used wherever Keycloak requires the internal realm ID. |
+| `${KEY_ID}` | `kid` of the realm's generated signing key, from `keycloak.keys.keyId`. Falls back to `${DID}` when that setting is empty. |
 
 These placeholders allow the realm template to reference its own DID and name without hardcoding them, so every provisioned realm gets its own correctly scoped client and credential configuration.
+
+### OID4VCI credential model
+
+The realm template targets the OID4VCI model introduced in **Keycloak 26.4**
+([keycloak#39768](https://github.com/keycloak/keycloak/pull/39768)) and is **not backwards
+compatible with Keycloak ≤26.3**. Realms provisioned by this portal will not issue credentials on
+an older server.
+
+What changed, and where it lives now:
+
+| Pre-26.4 | 26.4+ |
+|---|---|
+| Realm attributes `vc.<name>.*` | Attributes of a ClientScope with `protocol: oid4vc` (`defaultRealmConfig.clientScopes`) |
+| `components['…credentialbuilder.CredentialBuilder']` | Removed — builders are loaded through the SPI service loader |
+| `format: vc+sd-jwt` / `jwt_vc` | `format: dc+sd-jwt` / `jwt_vc_json` |
+| `vct` + `scope` | `vc.verifiable_credential_type` + `vc.supported_credential_types` |
+| `credential_signing_alg_values_supported` | `vc.credential_signing_alg` |
+| `credential_build_config.decoys` | `vc.credential_build_config.sd_jwt.number_of_decoys` |
+| `credential_build_config.proof_types_supported` | `vc.binding_required`, `vc.binding_required_proof_types`, `vc.cryptographic_binding_methods_supported` |
+| mapper `config.subjectProperty` | mapper `config.claim.name` |
+| mapper `config.supportedCredentialTypes` | Removed — a mapper belongs to exactly one ClientScope, so membership is structural |
+| — | Clients need `attributes.oid4vci.enabled: "true"` to opt into issuance |
+| — | Users need a `verifiableCredentials` list; the portal fills it in for the realm admin |
+
+Keycloak **ignores unknown attributes silently**, so a realm built from a pre-26.4 template is
+created without errors but issues nothing. See
+[`oid4vc-protocol-mappers.md`](https://github.com/SEAMWARE/data-space-connector/blob/main/doc/keycloak/oid4vc-protocol-mappers.md)
+in the Data Space Connector docs for the full mapper reference.
+
+**Required Keycloak feature flags.** The server must be started with all three:
+
+```
+--features=oid4vc-vci,oid4vc-vci-preauth-code,oid4vc-vci-rest-credential-offer
+```
+
+Without `oid4vc-vci-rest-credential-offer` the `/protocol/oid4vc/create-credential-offer`
+endpoint answers `403 invalid_client`.
+
+> **Known gap:** only the realm admin the portal creates gets a `verifiableCredentials` list.
+> Users added later from the organization's own Keycloak console will not be able to obtain the
+> credential until that list is set on them — Keycloak offers no realm-wide default.
 
 ---
 
