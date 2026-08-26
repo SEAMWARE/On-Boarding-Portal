@@ -24,8 +24,6 @@ interface RealmContext {
     DID: string;
     REALM: string;
     ID: string;
-
-    KEY_ID: string;
 }
 
 class KeycloakService {
@@ -46,21 +44,18 @@ class KeycloakService {
 
     }
 
-    async createRealm({ did, name, email }: Registration): Promise<string> {
+    async createRealm({ did, email }: Registration): Promise<string> {
         const realm = didService.getRealmFromDid(did);
         logger.info(`Create realm '${realm}'`)
-        // Empty keyId falls back to the DID, which is what Keycloak uses as the default
-        // for vc.signing_key_id when the attribute is not set.
-        const keyId = this.config.keys.keyId || did;
+
         const context: RealmContext = {
             DID: did,
             REALM: realm,
             ID: realm,
-            KEY_ID: keyId
         }
 
         let config = { ...this._getDefaultConfig(context), id: realm, realm, displayName: `Onboarding '${email}'` }
-        this._addKeyProvider(this.config.keys.curveType, keyId, config);
+        this._addKeyProvider(this.config.keys.curveType, config);
 
         await this._authClient();
         logger.debug(`Creating realm '${realm}' with config: ${JSON.stringify(config)}`)
@@ -144,7 +139,7 @@ class KeycloakService {
         await this.adminClient.auth(this.config.auth)
     }
 
-    private _addKeyProvider(curve: string, kid: string, config: any = {}): any {
+    private _addKeyProvider(curve: string, config: any = {}): any {
 
         const key = {
             name: 'ec-key',
@@ -154,7 +149,6 @@ class KeycloakService {
                 ecdsaEllipticCurveKey: [curve],
                 active: ["true"],
                 priority: ["0"],
-                kid: [kid],
                 enabled: ["true"]
             }
         };

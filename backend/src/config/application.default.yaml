@@ -130,6 +130,68 @@ app:
           authenticationFlowBindingOverrides: {}
           fullScopeAllowed: true
           nodeReRegistrationTimeout: -1
+        - attributes:
+            oid4vci.enabled: "true"
+            pkce.code.challenge.method: S256
+            post.logout.redirect.uris: +
+          clientId: 9c481dc3-2ad0-4fe0-881d-c32ad02fe0fc
+          defaultClientScopes:
+            - web-origins
+            - acr
+            - roles
+            - profile
+            - basic
+            - email
+          description: Hardcoded clientId expected by the Lissi ID Wallet (iOS/Android).
+          directAccessGrantsEnabled: false
+          enabled: true
+          fullScopeAllowed: true
+          implicitFlowEnabled: false
+          name: Lissi ID Wallet
+          optionalClientScopes:
+            - OperatorCredential
+            - LegalPersonCredential
+          protocol: openid-connect
+          publicClient: true
+          redirectUris:
+            - https://oob.lissi.io/vci-cb
+            - https://wallet.lissi.io/lite/vci-cb
+          serviceAccountsEnabled: false
+          standardFlowEnabled: true
+          webOrigins:
+            - +
+        - attributes:
+            dpop.bound.access.tokens: "true"
+            oid4vci.enabled: "true"
+            pkce.code.challenge.method: S256
+            post.logout.redirect.uris: +
+            require.pushed.authorization.requests: "true"
+          clientId: wallet-dev
+          defaultClientScopes:
+            - web-origins
+            - acr
+            - roles
+            - profile
+            - basic
+            - email
+          description: Public client used by EUDI Reference Wallet (.DEV variant). PKCE +
+            PAR + DPoP-bound access tokens.
+          directAccessGrantsEnabled: false
+          enabled: true
+          fullScopeAllowed: true
+          implicitFlowEnabled: false
+          name: EUDI Reference Wallet (dev)
+          optionalClientScopes:
+            - OperatorCredential
+            - LegalPersonCredential
+          protocol: openid-connect
+          publicClient: true
+          redirectUris:
+            - eu.europa.ec.euidi://authorization
+          serviceAccountsEnabled: false
+          standardFlowEnabled: true
+          webOrigins:
+            - +
       # OID4VCI model of Keycloak 26.4+ (keycloak#39768): one ClientScope with
       # `protocol: oid4vc` per issuable credential, described by its own `vc.*`
       # attributes. The pre-26.4 realm attributes `vc.<name>.*` and the
@@ -144,10 +206,6 @@ app:
             include.in.token.scope: "true"
             display.on.consent.screen: "false"
             vc.issuer_did: ${DID}
-            # Must match the kid of the realm signing key (app.keycloak.keys.keyId),
-            # otherwise issuance fails with
-            # "No key for id '<...>' and algorithm ES256 available".
-            vc.signing_key_id: ${KEY_ID}
             # dc+sd-jwt, not vc+sd-jwt: OID4VCI 1.0 renamed the SD-JWT VC identifier.
             vc.format: dc+sd-jwt
             # Drives the SD-JWT `vct` claim; supported_credential_types drives the
@@ -227,11 +285,6 @@ app:
               - view-clients
     keys:
       curveType: P-256
-      # kid of the signing key generated in each realm. did-helper publishes the realm's
-      # verification method as `<did>#<kid>` (did-helper/did/did_document.go), and
-      # `vc.signing_key_id` above must resolve to this same key. An empty value falls back
-      # to the realm DID, which is Keycloak's own default for vc.signing_key_id.
-      keyId: key-1
   tir: {}
 email:
   enabled: false

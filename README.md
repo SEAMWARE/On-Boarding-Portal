@@ -40,9 +40,7 @@ A self-service portal that allows organizations to register on a decentralized t
 > ```
 >
 > did-helper publishes each realm's verification method as `<did>#<kid>`, reading the `kid`
-> straight from the realm's JWKS. Keep `app.keycloak.keys.keyId` and the credential scope's
-> `vc.signing_key_id` in sync with it, or issuance fails with
-> `No key for id '<...>' and algorithm ES256 available`.
+> straight from the realm's JWKS.
 
 ## Onboarding Flow
 
@@ -206,12 +204,6 @@ app:
     # Elliptic curve for signing keys
     keys:
       curveType: P-256               # P-256 | P-384 | P-521
-      # kid of the signing key generated in each realm. did-helper publishes the realm's
-      # verification method as `<did>#<kid>`, and the `vc.signing_key_id` attribute of the
-      # credential scope below must resolve to this same key — otherwise issuance fails with
-      # "No key for id '<...>' and algorithm ES256 available". Leave empty to fall back to the
-      # realm DID, which is Keycloak's own default for vc.signing_key_id.
-      keyId: key-1
 
     # Client scopes created through the Admin API *after* the realm exists, then attached to
     # every client in it. Reserved for `openid-connect` scopes: OID4VC credential scopes belong
@@ -248,7 +240,6 @@ app:
             include.in.token.scope: "true"
             display.on.consent.screen: "false"
             vc.issuer_did: ${DID}
-            vc.signing_key_id: ${KEY_ID}                          # = keys.keyId above
             vc.format: dc+sd-jwt                                  # OID4VCI 1.0 SD-JWT VC id
             vc.verifiable_credential_type: LegalPersonCredential   # drives the SD-JWT `vct`
             vc.supported_credential_types: LegalPersonCredential   # drives the JWT-VC `type[]`
@@ -364,14 +355,13 @@ If the variable is not set the literal string `${DB_PASSWORD}` is used — make 
 
 ### Keycloak realm template variables
 
-Several fields inside `app.keycloak.defaultRealmConfig` and `app.keycloak.additionalClientScopes` contain `${DID}`, `${REALM}`, `${ID}`, and `${KEY_ID}` placeholders. These are **not** environment variables and must not be replaced by the operator — they are resolved automatically at runtime each time a new Keycloak realm is provisioned:
+Several fields inside `app.keycloak.defaultRealmConfig` and `app.keycloak.additionalClientScopes` contain `${DID}`, `${REALM}`, and `${ID}` placeholders. These are **not** environment variables and must not be replaced by the operator — they are resolved automatically at runtime each time a new Keycloak realm is provisioned:
 
 | Placeholder | Resolved value |
 |---|---|
 | `${DID}` | Full `did:web` identifier of the newly created realm (e.g. `did:web:example.com:my-realm`). Derived from `didGenerator.didWebHost` and the generated realm name. |
 | `${REALM}` | Randomly generated realm name (alphanumeric string, length controlled by `keycloak.realmNameLength`). Used as the Keycloak realm identifier. |
 | `${ID}` | Same value as `${REALM}`. Used wherever Keycloak requires the internal realm ID. |
-| `${KEY_ID}` | `kid` of the realm's generated signing key, from `keycloak.keys.keyId`. Falls back to `${DID}` when that setting is empty. |
 
 These placeholders allow the realm template to reference its own DID and name without hardcoding them, so every provisioned realm gets its own correctly scoped client and credential configuration.
 

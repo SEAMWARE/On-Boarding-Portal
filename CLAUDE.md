@@ -64,7 +64,7 @@ docker build -t onboarding:latest .   # build frontend first; image runs `node i
   `defaultRealmConfig.clientScopes`, not realm attributes `vc.<name>.*`. Keycloak ignores
   unknown attributes silently, so a regression here fails only at issuance time. Realms built
   from this template do not work on Keycloak ≤26.3.
-- `${DID}`/`${REALM}`/`${ID}`/`${KEY_ID}` in the realm template are resolved per realm by
+- `${DID}`/`${REALM}`/`${ID}` in the realm template are resolved per realm by
   `TemplateService` (`service/template.service.ts`), *not* by env substitution. An unknown key
   silently becomes `""`.
 - Frontend prettier: `printWidth 100`, `singleQuote`.
@@ -84,8 +84,8 @@ docker build -t onboarding:latest .   # build frontend first; image runs `node i
 - Deployed into the operator/governance namespace by [`../internal-infra`](../internal-infra).
 - DID issuance relies on [`../did-helper`](../did-helper) (Go); the in-repo
   `did.service.ts` is currently a placeholder. did-helper (`didType: keycloak`) publishes each
-  realm's verification method as `<did>#<kid>` (`did/did_document.go`), so
-  `app.keycloak.keys.keyId` must match the credential scope's `vc.signing_key_id`.
+  realm's verification method as `<did>#<kid>` (`did/did_document.go`), reading `kid` straight
+  from the realm's JWKS — no config coordination needed on this side.
 - ⚠️ `../internal-infra/deploy/values/onboarding.yaml` overrides
   `app.keycloak.additionalClientScopes` wholesale with the pre-26.4 model, and `deepMerge`
   *replaces* arrays — that override shadows the in-repo template and still needs porting.
