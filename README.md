@@ -25,6 +25,7 @@ A self-service portal that allows organizations to register on a decentralized t
 | [did-helper](https://github.com/SEAMWARE/did-helper) | — | DID document hosting with Keycloak integration (see below) |
 | SMTP server | any | Email notifications |
 | TIR | — | Trust Issuer Registry (optional) |
+| TIL | — | Trusted Issuers Lists — third-party registries notified alongside the TIR (optional, N endpoints) |
 
 > **did-helper** must be configured with Keycloak integration enabled so that newly created realms can resolve their `did:web` documents. The portal calls did-helper to register the DID after provisioning each realm — without it, verifiable credential issuance will not work. Point `didGenerator.didWebHost` in `application.yaml` to the domain served by your did-helper instance.
 >
@@ -311,6 +312,18 @@ app:
   # Trust Issuer Registry
   tir:
     url: http://<tir-host>
+
+  # Trusted Issuers Lists (optional): third-party registries notified alongside the TIR
+  # on register/unregister. Each entry gets its own request, run in parallel. A failure
+  # on one entry is logged and does not affect the others or the TIR registration —
+  # unlike the TIR, a TIL failure never rolls back the realm or aborts registration.
+  til:
+    - url: http://<til-host-1>
+      # Optional: credentials to register for this TIL specifically. Defaults to an
+      # empty list (same as the TIR) when omitted.
+      credentials:
+        - credentialsType: LegalPersonCredential
+    - url: http://<til-host-2>
 
 # ──────────────────────────────────────────────
 # Email (Nodemailer)

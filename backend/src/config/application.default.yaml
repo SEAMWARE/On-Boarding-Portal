@@ -286,6 +286,11 @@ app:
     keys:
       curveType: P-256
   tir: {}
+  # Trusted Issuers Lists: third-party registries notified alongside the TIR on
+  # register/unregister. Best-effort, one entry per URL — a failure on one entry is
+  # logged and does not affect the others or the TIR registration. Each entry is
+  # `{ url, credentials? }`; `credentials` defaults to an empty list (see README).
+  til: []
 email:
   enabled: false
   type: "nodemailer"
