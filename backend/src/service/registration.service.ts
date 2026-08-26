@@ -3,6 +3,7 @@ import { TrusterIssuer } from "../type/truster-issuer";
 import { keycloakService } from "./keycloak.service";
 import { logger } from "./logger";
 import { tirService } from "./tir.service";
+import { tilService } from "./til.service";
 
 class RegistrationService {
 
@@ -16,6 +17,7 @@ class RegistrationService {
         }
         try {
             await tirService.registerDid(tirIssuer);
+            await tilService.registerDid(tirIssuer);
         } catch(error) {
             logger.info('Remove realm because register DID failed');
             if (registration.didGenerated) {
@@ -28,7 +30,10 @@ class RegistrationService {
         if (removeRealm) {
             await keycloakService.removeRealm(did);
         }
-        await tirService.deleteDid(did);
+        await Promise.all([
+            tirService.deleteDid(did),
+            tilService.deleteDid(did),
+        ]);
     }
 }
 

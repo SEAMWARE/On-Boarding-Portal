@@ -1,36 +1,18 @@
 import { TrusterIssuer } from "../type/truster-issuer";
 import { configService } from "./config.service";
-import { externalRequest, logger } from "./logger";
+import { logger } from "./logger";
+import { normalizeIssuerUrl, registerIssuer, unregisterIssuer } from "./registry-client";
 
 class TirService {
     tirUrl: URL;
 
     constructor(tirUrl: string) {
-        const url = new URL(tirUrl);
-        if (url.pathname === '/') {
-            url.pathname = '/issuer'
-        }
-        this.tirUrl = url;
+        this.tirUrl = normalizeIssuerUrl(tirUrl);
     }
 
     async registerDid(trusterIssuer: TrusterIssuer): Promise<void> {
-        logger.info(`Register DID ${trusterIssuer.did}`)
-        const start = process.hrtime();
         try {
-            const response = await fetch(this.tirUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(trusterIssuer),
-            });
-            externalRequest(response, this.tirUrl, 'POST', start);
-            if (!response.ok) {
-                if (response.status === 419) {
-                    throw new Error(`DID '${trusterIssuer.did}' already registered`)
-                }
-                throw new Error(`Error registering did: ${response.status} ${response.statusText}`);
-            }
+            await registerIssuer(this.tirUrl, trusterIssuer);
         } catch (error) {
             logger.error("Error adding did to TIR:", error);
             throw error;
@@ -38,19 +20,8 @@ class TirService {
     }
 
     async deleteDid(did: string): Promise<boolean> {
-        const start = process.hrtime();
         try {
-            logger.info(`Unregister DID ${did}`)
-            const response = await fetch(`${this.tirUrl}/${did}`, {
-                method: 'DELETE',
-            });
-            externalRequest(response, this.tirUrl, 'POST', start);
-            if (!response.ok) {
-                logger.debug(`Error removing DID '${did}' ${response.status}: ${response.body}`)
-                return false;
-            }
-
-            return true;
+            return await unregisterIssuer(this.tirUrl, did);
         } catch (error) {
             logger.error("Error removing did from TIR", error);
             return false

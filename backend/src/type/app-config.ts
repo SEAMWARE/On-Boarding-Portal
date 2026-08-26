@@ -5,6 +5,7 @@ import { Credentials } from "@keycloak/keycloak-admin-client/lib/utils/auth";
 import { CorsOptions } from "cors";
 import SMTPPool from "nodemailer/lib/smtp-pool";
 import { DataSourceOptions } from "typeorm";
+import { IssuerCredentials } from "./truster-issuer";
 
 export interface AppConfig {
     server: ServerConfig
@@ -29,9 +30,14 @@ export interface Logging {
     level: 'error' | 'warn' | 'info' | 'http' | 'verbose' | 'debug' | 'silly';
 }
 
+export interface TilConfig {
+    url: string;
+    credentials?: IssuerCredentials[]
+}
 export interface AppCfg {
     login: LoginConfig;
     tir: TirConfig;
+    til: TilConfig[];
     keycloak: KeycloakConfig;
     documentToSignUrl: string;
 }
