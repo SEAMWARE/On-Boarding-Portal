@@ -2,6 +2,8 @@
     position: sticky;
     top: 0;
     z-index: 1000;
+    background-color: var(--mat-sys-surface);
+    border-bottom: 1px solid var(--mat-sys-outline-variant);
 
     .header-container {
         display: flex;
@@ -9,15 +11,46 @@
         width: 100%;
         max-width: var(--app-container-width);
         margin: 0 auto;
+        gap: 8px;
     }
 
     .brand {
         display: flex;
         align-items: center;
-        gap: 8px;
-        font-weight: 700;
-        color: var(--mat-sys-on-primary-fixed);
+        gap: 12px;
         cursor: pointer;
+    }
+
+    .brand-mark {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: var(--mat-sys-corner-medium, 10px);
+        background-color: var(--mat-sys-primary-container);
+        color: var(--mat-sys-on-primary-container);
+
+        mat-icon {
+            font-size: 20px;
+            width: 20px;
+            height: 20px;
+        }
+    }
+
+    .brand-name {
+        font: var(--mat-sys-title-large);
+        color: var(--mat-sys-on-surface);
+    }
+
+    .nav-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .nav-link {
+        color: var(--mat-sys-on-surface-variant);
     }
 }
 

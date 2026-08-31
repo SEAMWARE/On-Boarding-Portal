@@ -5,10 +5,10 @@
 
         <mat-tab>
             <ng-template mat-tab-label>
-                <span>SUMMARY</span>
+                <span>Summary</span>
             </ng-template>
             <div class="grid-layout">
-                <mat-form-field appearance="outline" class="span-9">
+                <mat-form-field appearance="outline" class="span-9 mono-field">
                     <mat-label>Registration ID</mat-label>
                     <input matInput formControlName="id">
                     <mat-icon matSuffix>fingerprint</mat-icon>
@@ -23,7 +23,7 @@
                     }
                 </div>
 
-                <mat-form-field appearance="outline" class="span-6">
+                <mat-form-field appearance="outline" class="span-6 mono-field">
                     <mat-label>Decentralized Identifier (DID)</mat-label>
                     <input matInput formControlName="did">
                 </mat-form-field>
@@ -90,7 +90,7 @@
         </mat-tab>
         <mat-tab>
             <ng-template mat-tab-label>
-                <span>COMPANY INFORMATION</span>
+                <span>Company information</span>
             </ng-template>
             <div class="grid-layout">
                 <mat-form-field appearance="outline" class="span-8">

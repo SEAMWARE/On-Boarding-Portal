@@ -6,53 +6,63 @@
 }
 
 .hero-bg {
-  padding: 80px 0;
+  padding: 96px 0 72px;
+  background: linear-gradient(180deg,
+      color-mix(in srgb, var(--mat-sys-primary) 7%, var(--mat-sys-surface)) 0%,
+      var(--mat-sys-surface) 100%);
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
 }
 
-.main-card {
-  padding: 40px;
-  overflow: hidden;
+.hero-layout {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 760px;
+}
 
-  .hero-layout {
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-  .title {
-    font-size: 3.5rem;
-    font-weight: 800;
-    line-height: 1.1;
-    margin: 24px 0;
-    color: var(--mat-sys-on-primary-fixed);
-  }
+.eyebrow {
+  font: var(--mat-sys-label-large);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mat-sys-primary);
+  margin: 0 0 16px;
+}
 
-  .subtitle {
-    font-size: 1.25rem;
-    color: #555;
-    max-width: 1000px;
-    margin-bottom: 40px;
-    line-height: 1.6;
-  }
+.title {
+  font: var(--mat-sys-display-small);
+  font-weight: 800;
+  color: var(--mat-sys-on-surface);
+  margin: 0 0 20px;
+}
+
+.subtitle {
+  font: var(--mat-sys-body-large);
+  font-size: 1.125rem;
+  color: var(--mat-sys-on-surface-variant);
+  max-width: 620px;
+  margin: 0 0 36px;
+  line-height: 1.6;
 }
 
 .features-section {
-  padding: 60px 0;
+  padding: 64px 0 80px;
 }
 
 .feature-card {
-  transition: transform 0.3s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
   &:hover {
-    transform: translateY(-5px);
+    transform: translateY(-4px);
+    box-shadow: var(--mat-sys-level1);
   }
 
   .icon-box {
-    background: #f0f2ff;
-    color: #3f51b5;
+    background: var(--mat-sys-primary-container);
+    color: var(--mat-sys-on-primary-container);
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 12px;
+    border-radius: var(--mat-sys-corner-medium, 10px);
   }
 }
 
@@ -60,16 +70,29 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  align-content: center;
-  justify-content: center;
   gap: 16px;
 }
+
 // Animations
 .animate-fade-in {
-  animation: fadeIn 0.8s ease-out forwards;
+  animation: fadeIn 0.6s ease-out forwards;
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 600px) {
+  .action-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }

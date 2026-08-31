@@ -1,32 +1,25 @@
 <app-toolbar />
 <main class="content-wrapper">
   <section class="hero-bg">
-    <div class="container">
-      <mat-card class="main-card animate-fade-in">
-        <mat-card-content>
-          <div class="hero-layout">
-            <div class="text-content">
-              <h1 class="title">Scale Trust in your <br>Data Space</h1>
-              <p class="subtitle">
-                Streamlining the integration of organizations into the Data Space, providing a simple and
-                secure environment for managing corporate Verifiable Credentials. Successful completion of the
-                onboarding process enables participation as a trusted ecosystem member.
-              </p>
+    <div class="container hero-layout animate-fade-in">
+      <p class="eyebrow">Data Space Connector</p>
+      <h1 class="title">Scale trust in your data space</h1>
+      <p class="subtitle">
+        Streamlining the integration of organizations into the Data Space, providing a simple and
+        secure environment for managing corporate Verifiable Credentials. Successful completion of the
+        onboarding process enables participation as a trusted ecosystem member.
+      </p>
 
-              <div class="action-row">
-                <button matFab extended (click)="onSubmit()">
-                  <mat-icon>add_business</mat-icon>
-                  START ONBOARDING PROCESS
-                </button>
-                <button matFab extended (click)="onSubmit('search')">
-                  <mat-icon>search</mat-icon>
-                  CHECK ONBOARDING STATUS
-                </button>
-              </div>
-            </div>
-          </div>
-        </mat-card-content>
-      </mat-card>
+      <div class="action-row">
+        <button matButton="filled" (click)="onSubmit()">
+          <mat-icon>add_business</mat-icon>
+          Start onboarding
+        </button>
+        <button matButton="outlined" (click)="onSubmit('search')">
+          <mat-icon>search</mat-icon>
+          Check application status
+        </button>
+      </div>
     </div>
   </section>
 
@@ -35,7 +28,7 @@
       <mat-card class="feature-card span-4" appearance="outlined">
         <mat-card-header>
           <div mat-card-avatar class="icon-box"><mat-icon>fingerprint</mat-icon></div>
-          <mat-card-title>Digital Identity</mat-card-title>
+          <mat-card-title>Digital identity</mat-card-title>
         </mat-card-header>
         <mat-card-content>
           <p>Link your organization's legal identity with decentralized identifiers (DID) for secure interoperability.
@@ -46,7 +39,7 @@
       <mat-card class="feature-card span-4" appearance="outlined">
         <mat-card-header>
           <div mat-card-avatar class="icon-box"><mat-icon>workspace_premium</mat-icon></div>
-          <mat-card-title>Trust Framework</mat-card-title>
+          <mat-card-title>Trust framework</mat-card-title>
         </mat-card-header>
         <mat-card-content>
           <p>Validated onboarding ensures all participants comply with the specific governance rules of the data space.
@@ -57,7 +50,7 @@
       <mat-card class="feature-card span-4" appearance="outlined">
         <mat-card-header>
           <div mat-card-avatar class="icon-box"><mat-icon>account_balance_wallet</mat-icon></div>
-          <mat-card-title>Wallet Ready</mat-card-title>
+          <mat-card-title>Wallet ready</mat-card-title>
         </mat-card-header>
         <mat-card-content>
           <p>Once approved, your organization will be fully authorized to participate in the data spaces and interact

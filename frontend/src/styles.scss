@@ -7,49 +7,75 @@
 @use '@angular/material' as mat;
 
 :root {
-  --app-navy-gradient: linear-gradient(35deg, var(--mat-sys-primary) 0%, var(--mat-sys-on-primary-fixed) 100%);
-  --app-container-width: 1100px;
+  @include mat.theme((color: (theme-type: light,
+          primary: mat.$violet-palette,
+          tertiary: mat.$azure-palette,
+        ),
+      typography: (plain-family: 'Inter, sans-serif',
+          brand-family: 'Manrope, sans-serif',
+        ),
+      density: 0));
+
+  // Utility face reserved for verifiable identifiers: DIDs, tracking IDs, tax IDs, file
+  // names. Distinguishes machine-readable/auditable values from prose everywhere they appear.
+  --app-font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --app-container-width: 1140px;
+
+  // M3 has no native "success"/"warning" roles. These extend the generated palette so
+  // components never fall back to raw hex — keep in sync with the primary/tertiary hues above.
+  --app-success: #146c3f;
+  --app-on-success: #ffffff;
+  --app-success-container: #d3f2df;
+  --app-on-success-container: #06341d;
+
+  --app-warning: #8a5300;
+  --app-on-warning: #ffffff;
+  --app-warning-container: #ffe4ad;
+  --app-on-warning-container: #3f2c00;
 }
 
 html {
   color-scheme: light;
-  @include mat.theme((color: mat.$blue-palette,
-      typography: Roboto,
-      density: 0));
-  background: var(--app-navy-gradient);
-  background-attachment: fixed;
-  background-repeat: no-repeat;
-  background-size: cover;
+  background-color: var(--mat-sys-surface-container-lowest);
 }
 
 body {
   margin: 0;
   box-sizing: content-box;
+  font: var(--mat-sys-body-large);
+  color: var(--mat-sys-on-surface);
 }
 
+h1,
+h2,
+h3,
+h4 {
+  font: var(--mat-sys-headline-large);
+  margin: 0;
+}
 
 .snackbar-error {
-  --mat-snack-bar-container-color: #ce2b38;
-  --mat-snack-bar-button-color: #fef2f2;
-  box-shadow: 0px 3px 5px rgba(0, 0, 0, 0.2);
+  --mat-snack-bar-container-color: var(--mat-sys-error);
+  --mat-snack-bar-button-color: var(--mat-sys-on-error);
+  box-shadow: var(--mat-sys-level2);
 }
 
 .snackbar-success {
-  --mat-snack-bar-container-color: #006435;
-  --mat-snack-bar-button-color: f0fdf4;
-  box-shadow: 0px 3px 5px rgba(0, 0, 0, 0.2);
+  --mat-snack-bar-container-color: var(--app-success);
+  --mat-snack-bar-button-color: var(--app-on-success);
+  box-shadow: var(--mat-sys-level2);
 }
 
 .snackbar-warning {
-  --mat-snack-bar-container-color: #ce8a00;
-  --mat-snack-bar-button-color: #fffbeb;
-  box-shadow: 0px 3px 5px rgba(0, 0, 0, 0.2);
+  --mat-snack-bar-container-color: var(--app-warning);
+  --mat-snack-bar-button-color: var(--app-on-warning);
+  box-shadow: var(--mat-sys-level2);
 }
 
 .snackbar-info {
-  --mat-snack-bar-container-color: #2231b3;
-  --mat-snack-bar-button-color: eff6ff;
-  box-shadow: 0px 3px 5px rgba(0, 0, 0, 0.2);
+  --mat-snack-bar-container-color: var(--mat-sys-tertiary);
+  --mat-snack-bar-button-color: var(--mat-sys-on-tertiary);
+  box-shadow: var(--mat-sys-level2);
 }
 
 .grid-layout {

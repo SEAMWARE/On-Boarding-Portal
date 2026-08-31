@@ -1,9 +1,9 @@
-$main-bg-color: #f9f9f9;
 .detail-container {
     padding: 16px;
-    background: $main-bg-color;
+    background: var(--mat-sys-surface-container-low);
     border-radius: 12px;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--mat-sys-outline-variant);
+
     .detail-header {
         display: flex;
         justify-content: end;
@@ -16,29 +16,32 @@ mat-chip {
 
     &[status="pending"],
     &[status="submitted"] {
-        --mat-chip-elevated-disabled-container-color: #eff6ff;
+        --mat-chip-elevated-disabled-container-color: var(--mat-sys-tertiary-container);
+        --mat-chip-disabled-label-text-color: var(--mat-sys-on-tertiary-container);
     }
 
     &[status="under_review"] {
-        --mat-chip-elevated-disabled-container-color: #fffbeb;
-        color: #b45309;
+        --mat-chip-elevated-disabled-container-color: var(--app-warning-container);
+        --mat-chip-disabled-label-text-color: var(--app-on-warning-container);
     }
 
     &[status="action_required"],
-    &[status="rejected"]
-     {
-        --mat-chip-elevated-disabled-container-color: #fef2f2;
-        --mat-chip-disabled-label-text-color: #b91c1c;
-        border: 1px solid #fee2e2;
+    &[status="rejected"] {
+        --mat-chip-elevated-disabled-container-color: var(--mat-sys-error-container);
+        --mat-chip-disabled-label-text-color: var(--mat-sys-on-error-container);
+        border: 1px solid var(--mat-sys-error-container);
     }
 
     &[status="active"] {
-        --mat-chip-elevated-disabled-container-color: #f0fdf4;
-        --mat-chip-disabled-label-text-color: #15803d;
-        border: 1px solid #dcfce7;
+        --mat-chip-elevated-disabled-container-color: var(--app-success-container);
+        --mat-chip-disabled-label-text-color: var(--app-on-success-container);
+        border: 1px solid var(--app-success-container);
     }
 }
 
+.mono-field input {
+    font-family: var(--app-font-mono);
+}
 
 .actions {
   display: flex;
@@ -66,7 +69,7 @@ mat-chip {
 
 // upload files
 .files-container {
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--mat-sys-outline-variant);
   border-radius: 6px;
   box-sizing: border-box;
   padding: 0 18px 15px 18px;
@@ -74,7 +77,7 @@ mat-chip {
     position: relative;
     top: -10px;
     left: -30px;
-    background-color: $main-bg-color;
+    background-color: var(--mat-sys-surface-container-low);
     display: inline-block;
     padding: 0px 6px;
     box-sizing: border-box;
@@ -98,13 +101,13 @@ mat-chip {
     max-width: 300px;
 
     &:hover {
-      background-color: rgba(0, 0, 0, 0.1) !important;
+      background-color: color-mix(in srgb, var(--mat-sys-on-surface) 8%, transparent) !important;
       transform: translateY(-1px);
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      box-shadow: var(--mat-sys-level1);
     }
 
     mat-icon {
-      color: #d32f2f;
+      color: var(--mat-sys-error);
     }
 
     .truncate {
