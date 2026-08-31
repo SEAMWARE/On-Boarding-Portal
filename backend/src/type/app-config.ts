@@ -79,12 +79,22 @@ export interface MailTemplate {
     subject: string;
     html: string
 }
+
+export interface AdminNotificationConfig extends MailTemplate {
+    enabled: boolean;
+    // If set, notifications are sent to this address only. Otherwise, users of the admin
+    // panel's login realm (parsed from `app.login.openIdUrl`) with an email are notified:
+    // members of `keycloakGroup` if set, or every user in the realm if not.
+    email?: string;
+    keycloakGroup?: string;
+}
 export interface BaseEmailConfig {
     enabled: boolean;
     from: string;
     update: MailTemplate
     submit: MailTemplate
     active: MailTemplate
+    adminNotification: AdminNotificationConfig
 }
 
 export interface NodemailerConfig extends BaseEmailConfig {
