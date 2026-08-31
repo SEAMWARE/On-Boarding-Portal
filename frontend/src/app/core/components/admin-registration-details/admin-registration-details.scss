@@ -1,11 +1,13 @@
-$main-bg-color: #f9f9f9;
 .detail-container {
     padding: 16px;
-    background: $main-bg-color;
+    background: var(--mat-sys-surface-container-low);
     border-radius: 12px;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--mat-sys-outline-variant);
 }
 
+.mono-field input {
+    font-family: var(--app-font-mono);
+}
 
 .actions {
   display: flex;
@@ -36,7 +38,7 @@ $main-bg-color: #f9f9f9;
 
 // upload files
 .files-container {
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--mat-sys-outline-variant);
   border-radius: 6px;
   box-sizing: border-box;
   padding: 0 18px 8px 18px;
@@ -44,7 +46,7 @@ $main-bg-color: #f9f9f9;
     position: relative;
     top: -10px;
     left: -30px;
-    background-color: $main-bg-color;
+    background-color: var(--mat-sys-surface-container-low);
     display: inline-block;
     padding: 0px 6px;
     box-sizing: border-box;
@@ -68,13 +70,13 @@ $main-bg-color: #f9f9f9;
     max-width: 300px;
 
     &:hover {
-      background-color: rgba(0, 0, 0, 0.1) !important;
+      background-color: color-mix(in srgb, var(--mat-sys-on-surface) 8%, transparent) !important;
       transform: translateY(-1px);
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      box-shadow: var(--mat-sys-level1);
     }
 
     mat-icon {
-      color: #d32f2f;
+      color: var(--mat-sys-error);
     }
 
     .truncate {

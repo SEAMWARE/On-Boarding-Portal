@@ -2,6 +2,10 @@
   border-radius: 8px;
 }
 
+.mono-field input {
+  font-family: var(--app-font-mono);
+}
+
 .stepper-actions {
   display: flex;
   justify-content: flex-end;
