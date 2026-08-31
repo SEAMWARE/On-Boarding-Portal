@@ -13,7 +13,6 @@ export interface AppConfig {
     app: AppCfg
     database: DataSourceOptions;
     email: EmailConfig;
-    documentToSignUrl: string;
     didGenerator: DidGeneratorConfig
 }
 
@@ -39,7 +38,8 @@ export interface AppCfg {
     tir: TirConfig;
     til: TilConfig[];
     keycloak: KeycloakConfig;
-    documentToSignUrl: string;
+    // When unset, the registration form skips the "sign & upload document" step entirely.
+    documentToSignUrl?: string;
     theme: ThemeConfig;
 }
 

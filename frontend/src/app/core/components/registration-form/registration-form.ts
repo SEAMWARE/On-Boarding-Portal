@@ -45,6 +45,7 @@ export class RegistrationForm {
   registrationId?: string;
 
   pdfDocumentUrl: string;
+  hasDocumentToSign: boolean;
   didCreationEnabled: boolean;
   contactForm: FormGroup;
   orgForm: FormGroup;
@@ -57,6 +58,7 @@ export class RegistrationForm {
     config: ServerConfigService
   ) {
     this.pdfDocumentUrl = config.getProperty('documentToSignUrl');
+    this.hasDocumentToSign = !!this.pdfDocumentUrl;
     this.didCreationEnabled = config.getProperty('didCreationEnabled');
 
     const didValidators = [Validators.pattern(/^did:[a-z0-9]+:[a-zA-Z0-9\.\-_%:]+$/)];
@@ -79,7 +81,7 @@ export class RegistrationForm {
     });
 
     this.legalForm = this.fb.group({
-      file: [null, Validators.required]
+      file: [null, this.hasDocumentToSign ? Validators.required : []]
     });
   }
 
@@ -103,7 +105,7 @@ export class RegistrationForm {
       const data = { ...this.contactForm.value, ...this.orgForm.value }
       this.onBoardingService.submitRegistration(
         data as RegistrationInfo,
-        this.legalForm.get('file')!.value as File
+        this.legalForm.get('file')!.value as File | null
       ).subscribe({
         next: (response) => {
           this.registrationId = response.id;

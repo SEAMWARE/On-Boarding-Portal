@@ -78,7 +78,7 @@ appServer.use((_req, res) => {
 (async () => {
   try {
     renderedIndex = await ejs.renderFile(indexPath, {
-      documentToSignUrl: app.documentToSignUrl,
+      documentToSignUrl: app.documentToSignUrl || '',
       didCreationEnabled: app.keycloak.didCreationEnabled,
       theme: app.theme
     });

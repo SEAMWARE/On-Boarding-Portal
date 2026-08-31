@@ -39,7 +39,7 @@ export class OnBoardingService {
         }
     }
 
-    submitRegistration(formValues: RegistrationInfo, file: File): Observable<any> {
+    submitRegistration(formValues: RegistrationInfo, file: File | null): Observable<any> {
         const url = this._resolveUrl(this.submitPath);
 
         const headers = this._getHeaders();
@@ -50,7 +50,9 @@ export class OnBoardingService {
             }
         })
 
-        body.append('files', file, file.name);
+        if (file) {
+            body.append('files', file, file.name);
+        }
 
         return this.http.post<any>(url, body, { headers });
     }
