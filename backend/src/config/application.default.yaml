@@ -304,3 +304,14 @@ email:
   active:
     subject: "OnBoarding Portal - Registration activated"
     html: "file://./templates/active.html"
+  # Notifies portal admins by email when a new registration is submitted.
+  adminNotification:
+    enabled: true
+    # If set, notifications go only to this address. Uncomment to override:
+    # email: "admins@example.com"
+    # Otherwise, users of the admin panel's login realm (parsed from `app.login.openIdUrl`)
+    # with an email are notified: members of this group if set, or every user in the realm
+    # if not.
+    # keycloakGroup: admin
+    subject: "OnBoarding Portal - New registration received"
+    html: "file://./templates/admin-notification.html"

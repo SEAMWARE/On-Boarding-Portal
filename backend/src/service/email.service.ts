@@ -15,12 +15,14 @@ interface EmailService {
 
     sendSubmitEmail(email: string, mailContext: MailContext): Promise<void>;
     sendUpdateEmail(email: string, mailContext: MailContext): Promise<void>;
+    sendAdminNotificationEmail(email: string, mailContext: MailContext): Promise<void>;
 }
 
 abstract class BaseMailService implements EmailService {
 
     abstract sendSubmitEmail(email: string, mailContext: MailContext): Promise<void>;
     abstract sendUpdateEmail(email: string, mailContext: MailContext): Promise<void>;
+    abstract sendAdminNotificationEmail(email: string, mailContext: MailContext): Promise<void>;
     templateService: TemplateService;
     constructor() {
         this.templateService = new TemplateService(DOUBLE_CURLY_BRACE_REGEX);
@@ -76,6 +78,17 @@ class NodemailerEmailService extends BaseMailService {
             html: template
         })
     }
+
+    async sendAdminNotificationEmail(email: string, mailContext: MailContext): Promise<void> {
+        const mailTemplate = this.emailConfig.adminNotification;
+        const template = this._getTemplate(mailTemplate.html, mailContext)
+        await this.transport.sendMail({
+            from: this.emailConfig.from,
+            to: email,
+            subject: mailTemplate.subject,
+            html: template
+        })
+    }
 }
 
 class DisabledMailService extends BaseMailService {
@@ -85,6 +98,10 @@ class DisabledMailService extends BaseMailService {
         return Promise.resolve();
     }
     sendUpdateEmail(email: string, mailContext: MailContext): Promise<void> {
+        logger.debug('Mail service is disabled')
+        return Promise.resolve();
+    }
+    sendAdminNotificationEmail(email: string, mailContext: MailContext): Promise<void> {
         logger.debug('Mail service is disabled')
         return Promise.resolve();
     }

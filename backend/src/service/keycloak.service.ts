@@ -94,6 +94,32 @@ class KeycloakService {
         return `${this.config.baseUrl}/realms/${realm}/account`;
     }
 
+    async getAdminEmails(realm: string, groupName?: string): Promise<string[]> {
+        await this._authClient();
+        logger.debug(`Looking up admin emails in realm '${realm}'${groupName ? ` (group '${groupName}')` : ' (all realm users)'}`);
+
+        try {
+            if (!groupName) {
+                const users = await this.adminClient.users.find({ realm, briefRepresentation: false });
+                return users.map(user => user.email).filter((email): email is string => Boolean(email));
+            }
+
+            const [group] = await this.adminClient.groups.find({ realm, search: groupName, exact: true });
+            if (!group?.id) {
+                logger.warn(`Keycloak group '${groupName}' not found in realm '${realm}'`);
+                return [];
+            }
+            const members = await this.adminClient.groups.listMembers({ id: group.id, realm, briefRepresentation: false });
+            return members.map(member => member.email).filter((email): email is string => Boolean(email));
+        } catch (error) {
+            // A 403 here means the account in `app.keycloak.auth` lacks the 'view-users' /
+            // 'query-users' (/ 'query-groups') admin rights on this specific realm — those
+            // are not granted implicitly, unlike on realms this account provisions itself.
+            logger.error(`Unable to list admin users in realm '${realm}'${groupName ? ` (group '${groupName}')` : ''}. Check that the account in 'app.keycloak.auth' has 'view-users'/'query-users' rights on that realm.`, error);
+            throw error;
+        }
+    }
+
     private async _assignScopeToClients(scopeId: string, clientUuids: string[], realm: string, type: ClientScope['type']): Promise<void> {
         const assign = type === 'default'
             ? (id: string) => this.adminClient.clients.addDefaultClientScope({ id, realm, clientScopeId: scopeId })

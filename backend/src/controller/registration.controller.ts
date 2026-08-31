@@ -3,6 +3,7 @@ import { registrationRepository, RegistrationUpdate } from "../repository/regist
 import { logger } from "../service/logger";
 import { isDuplicatedKeyError } from "../type/db-errors";
 import emailService from "../service/email.service";
+import { adminNotificationService } from "../service/admin-notification.service";
 import { RegistrationStatus } from "../entity/registration.entity";
 import { storageService } from "../service/storage.service";
 import { uploadFiles } from "../middleware/storage.middleware";
@@ -49,6 +50,9 @@ router.post('/registrations/submit', uploadFiles('files', { maxCount: 5, allowed
         }
         emailService.sendSubmitEmail(data.email, mailContext).catch((error) => {
             logger.warn('Unable to submit send email', error);
+        })
+        adminNotificationService.notify(mailContext).catch((error) => {
+            logger.warn('Unable to send admin notification email', error);
         })
     } catch (error) {
         logger.error('Submission Error:', error);
