@@ -49,13 +49,11 @@ html.theme-ocei {
         primary: ocei-theme.$primary-palette,
         tertiary: ocei-theme.$tertiary-palette,
       ),
-      typography: Roboto,
+      typography: (plain-family: 'Inter, sans-serif',
+          brand-family: 'Manrope, sans-serif',
+        ),
       density: 0));
-  --mat-sys-on-primary-fixed: var(--mat-sys-inverse-primary);
-  background: var(--mat-sys-background);
-  background-attachment: fixed;
-  background-repeat: initial;
-  background-size: initial;
+  background-color: var(--mat-sys-surface-container-lowest);
 }
 
 body {
