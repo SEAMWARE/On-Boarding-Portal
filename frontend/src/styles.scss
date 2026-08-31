@@ -54,6 +54,29 @@ html.theme-ocei {
         ),
       density: 0));
   background-color: var(--mat-sys-surface-container-lowest);
+
+  // The client's exact chosen swatches, not the M3 tone-40 derivation used for
+  // --mat-sys-primary/--mat-sys-secondary (that tone is tuned for text/icon
+  // legibility on light surfaces, which makes it read much darker than the
+  // bright brand colors picked for this theme). Scoped to filled-button
+  // backgrounds only, so links/outlined text/icons keep the legible M3 tone.
+  --app-ocei-primary: #3eddaa;
+  --app-ocei-on-primary: #ffffff;
+  --app-ocei-secondary: #4ac5d9;
+  --app-ocei-on-secondary: #001f24;
+
+  --mat-button-filled-container-color: var(--app-ocei-primary);
+  --mat-button-filled-label-text-color: var(--app-ocei-on-primary);
+
+  button[color="accent"] {
+    --mat-button-filled-container-color: var(--app-ocei-secondary);
+    --mat-button-filled-label-text-color: var(--app-ocei-on-secondary);
+  }
+
+  h1, h2, h3, h4,
+  .brand-name {
+    color: var(--app-ocei-primary) !important;
+  }
 }
 
 body {
@@ -121,4 +144,8 @@ button[color="warn"] {
   --mat-sys-on-primary: var(--mat-sys-on-error);
   --mat-sys-primary-container: var(--mat-sys-error-container);
   --mat-sys-on-primary-container: var(--mat-sys-on-error-container);
+  // Re-asserted directly so it isn't shadowed by html.theme-ocei's literal
+  // filled-button brand override above.
+  --mat-button-filled-container-color: var(--mat-sys-error);
+  --mat-button-filled-label-text-color: var(--mat-sys-on-error);
 }
