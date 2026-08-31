@@ -5,6 +5,7 @@
 // Learn more about theming and how to use it for your application's
 // custom components at https://material.angular.dev/guide/theming
 @use '@angular/material' as mat;
+@use './app/themes/ocei-theme-colors' as ocei-theme;
 
 :root {
   --app-navy-gradient: linear-gradient(35deg, var(--mat-sys-primary) 0%, var(--mat-sys-on-primary-fixed) 100%);
@@ -20,6 +21,24 @@ html {
   background-attachment: fixed;
   background-repeat: no-repeat;
   background-size: cover;
+}
+
+// Statically compiled alternate theme (white-label). Applied by adding the
+// `theme-ocei` class to <html> (see index.html / EJS render in index.ts) — the
+// class selector out-specifies the plain `html` rule above, so no runtime
+// color computation is needed to switch brands.
+html.theme-ocei {
+  @include mat.theme((color: (theme-type: light,
+        primary: ocei-theme.$primary-palette,
+        tertiary: ocei-theme.$tertiary-palette,
+      ),
+      typography: Roboto,
+      density: 0));
+  --mat-sys-on-primary-fixed: var(--mat-sys-inverse-primary);
+  background: var(--mat-sys-background);
+  background-attachment: fixed;
+  background-repeat: initial;
+  background-size: initial;
 }
 
 body {

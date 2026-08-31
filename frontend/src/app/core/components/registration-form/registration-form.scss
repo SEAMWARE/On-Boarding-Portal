@@ -31,7 +31,7 @@
 }
 
 .documentPdfLink {
-  color: var(--mat-sys-primary);
+  color: var(--mat-sys-primary-fixed-dim);
   text-decoration: none;
   font-weight: 500;
   position: relative;
@@ -45,7 +45,7 @@
     height: 2px;
     bottom: -2px;
     left: 0;
-    background-color: var(--mat-sys-primary);
+    background-color: var(--mat-sys-primary-fixed-dim);
     transform: scaleX(0);
     transform-origin: bottom right;
     transition: transform 0.1s ease-out;

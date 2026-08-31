@@ -6,6 +6,7 @@ import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatDividerModule } from '@angular/material/divider';
+import { ServerConfigService } from '../../services/server-config';
 
 @Component({
   selector: 'app-toolbar',
@@ -25,12 +26,21 @@ export class Toolbar {
   @Input() showOnBoarding = true;
   @Input() showUserMenu = false;
   user: any;
+
+  readonly logoUrl: string;
+  readonly appName: string;
+
   constructor(
     private readonly authService: AuthService,
-    private readonly router: Router
+    private readonly router: Router,
+    private readonly config: ServerConfigService
   ) {
     this.user = this.authService.getUser();
     console.log(this.user);
+
+    const theme = this.config.getProperty('theme');
+    this.logoUrl = theme?.logoUrl || '/favicon.ico';
+    this.appName = theme?.appName || 'Onboarding Portal';
   }
 
   isLogged() {

@@ -35,6 +35,13 @@ database:
   # Force UTC timezone for date storage. Ignored by PostgreSQL driver, required for MySQL to store dates in UTC.
   timezone: "Z"
 app:
+  theme:
+    # Statically compiled frontend color theme. Must match one of the theme
+    # classes defined in frontend/src/styles.scss (currently "default" or "ocei").
+    name: default
+    appName: "On Boarding Portal"
+    # logoUrl / faviconUrl: left unset to keep the built-in defaults
+    # (frontend/public/favicon.ico). Override per deployment to white-label.
   login:
     openIdUrl: ""
     clientId: ""

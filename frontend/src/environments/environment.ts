@@ -1,7 +1,8 @@
-import { Config } from "../models/config";
+import { Config, DEFAULT_THEME } from "../models/config";
 
 export const environment: Config = {
   serverHost: 'http://localhost:8080',
   documentToSignUrl: 'https://pdfobject.com/pdf/sample.pdf',
-  didCreationEnabled: true
+  didCreationEnabled: true,
+  theme: DEFAULT_THEME
 }

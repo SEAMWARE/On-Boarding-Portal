@@ -18,6 +18,11 @@
         font-weight: 700;
         color: var(--mat-sys-on-primary-fixed);
         cursor: pointer;
+
+        .brand-logo {
+            height: 40px;
+            width: auto;
+        }
     }
 }
 

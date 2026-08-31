@@ -40,6 +40,16 @@ export interface AppCfg {
     til: TilConfig[];
     keycloak: KeycloakConfig;
     documentToSignUrl: string;
+    theme: ThemeConfig;
+}
+
+export interface ThemeConfig {
+    // Must match a `.theme-<name>` class compiled in frontend/src/styles.scss.
+    // "default" applies no class (uses the unscoped base theme).
+    name: string;
+    appName?: string;
+    logoUrl?: string;
+    faviconUrl?: string;
 }
 
 export interface LoginConfig {
