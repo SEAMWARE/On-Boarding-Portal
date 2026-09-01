@@ -11,6 +11,7 @@ import { DOLLAR_REGEX, TemplateService } from "./template.service";
 import { Registration } from "../entity/registration.entity";
 import UserRepresentation from "@keycloak/keycloak-admin-client/lib/defs/userRepresentation";
 import { RequiredActionAlias } from "@keycloak/keycloak-admin-client/lib/defs/requiredActionProviderRepresentation";
+import { RoleMappingPayload } from "@keycloak/keycloak-admin-client/lib/defs/roleRepresentation";
 
 const REALM_CHARSET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_";
 
@@ -203,6 +204,15 @@ class KeycloakService {
         await this._authClient();
         logger.info(`Creating admin user '${user.username}' and email '${user.email}' in realm '${realm}'`)
         const realmAdmin = await this.adminClient.users.create({ ...user, realm })
+
+        // The user-creation endpoint joins `groups` by path, but ignores `realmRoles` and
+        // `clientRoles` — those are only honored during realm import, not single-user create.
+        // They must be assigned through their own role-mappings endpoints afterwards.
+        await Promise.all([
+            this._assignRealmRoles(realmAdmin.id, realm, user.realmRoles),
+            this._assignClientRoles(realmAdmin.id, realm, user.clientRoles),
+        ]);
+
         if (user.requiredActions?.includes(RequiredActionAlias.VERIFY_EMAIL)) {
             try {
                 await this.adminClient.users.executeActionsEmail({
@@ -219,6 +229,49 @@ class KeycloakService {
             username: user.id!,
             realm
         }
+    }
+
+    private async _assignRealmRoles(userId: string, realm: string, roleNames?: string[]): Promise<void> {
+        if (!roleNames?.length) return;
+
+        try {
+            const roles = await Promise.all(
+                roleNames.map(name => this.adminClient.roles.findOneByName({ realm, name }))
+            );
+            await this.adminClient.users.addRealmRoleMappings({
+                id: userId,
+                realm,
+                roles: roles.filter((role): role is RoleMappingPayload => Boolean(role?.id)),
+            });
+        } catch (error) {
+            logger.warn(`Unable to assign realm roles [${roleNames.join(', ')}]:`, error);
+        }
+    }
+
+    private async _assignClientRoles(userId: string, realm: string, clientRoles?: Record<string, string[]>): Promise<void> {
+        const entries = Object.entries(clientRoles ?? {});
+        if (!entries.length) return;
+
+        const results = await Promise.allSettled(entries.map(async ([clientId, roleNames]) => {
+            const [client] = await this.adminClient.clients.find({ realm, clientId });
+            if (!client?.id) throw new Error(`Client '${clientId}' not found in realm '${realm}'`);
+
+            const roles = await Promise.all(
+                roleNames.map(roleName => this.adminClient.clients.findRole({ id: client.id!, realm, roleName }))
+            );
+            await this.adminClient.users.addClientRoleMappings({
+                id: userId,
+                realm,
+                clientUniqueId: client.id,
+                roles: roles.filter((role): role is RoleMappingPayload => Boolean(role?.id)),
+            });
+        }));
+
+        results.forEach((result, index) => {
+            if (result.status === 'rejected') {
+                logger.warn(`Unable to assign client roles for '${entries[index][0]}':`, result.reason);
+            }
+        });
     }
 
     private generateRandomString(length = 16, charset = REALM_CHARSET) {
