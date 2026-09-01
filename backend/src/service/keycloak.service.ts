@@ -67,7 +67,7 @@ class KeycloakService {
         }
         if (this.config.adminUserConfig.enabled) {
             try {
-                await this._createAdminUser(realmName, email);
+                await this._createAdminUser(realmName, email, context);
             } catch (error) {
                 logger.error('Unable to create admin user', error);
             }
@@ -184,15 +184,16 @@ class KeycloakService {
         return [...new Set(all.filter(s => s.protocol === 'oid4vc' && s.name).map(s => s.name!))];
     }
 
-    private async _createAdminUser(realm: string, email: string): Promise<AdminUser> {
+    private async _createAdminUser(realm: string, email: string, context: RealmContext): Promise<AdminUser> {
 
         // Keycloak 26.4+ ties /create-credential-offer to a per-user credential list;
         // without it the endpoint answers 400 "User 'X' does not have verifiable
         // credential 'Y'". UserRepresentation does not declare the field, but users.create
         // serializes the object as-is.
         const credentialScopes = this._vcScopeNames();
+        const adminUserConfig = this._getFromTemplate(this.config.adminUserConfig, context) as UserRepresentation;
         const user: UserRepresentation & { verifiableCredentials?: { credentialScopeName: string }[] } = {
-            ...this.config.adminUserConfig,
+            ...adminUserConfig,
             enabled: true,
             email,
             ...(credentialScopes.length
