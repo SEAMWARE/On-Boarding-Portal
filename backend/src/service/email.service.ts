@@ -11,18 +11,23 @@ import { DOUBLE_CURLY_BRACE_REGEX, TemplateService } from "./template.service";
 
 const emailConfig = configService.get().email
 
+interface AdminNotificationResult {
+    accepted: string[];
+    rejected: string[];
+}
+
 interface EmailService {
 
     sendSubmitEmail(email: string, mailContext: MailContext): Promise<void>;
     sendUpdateEmail(email: string, mailContext: MailContext): Promise<void>;
-    sendAdminNotificationEmail(email: string, mailContext: MailContext): Promise<void>;
+    sendAdminNotificationEmail(emails: string[], mailContext: MailContext): Promise<AdminNotificationResult>;
 }
 
 abstract class BaseMailService implements EmailService {
 
     abstract sendSubmitEmail(email: string, mailContext: MailContext): Promise<void>;
     abstract sendUpdateEmail(email: string, mailContext: MailContext): Promise<void>;
-    abstract sendAdminNotificationEmail(email: string, mailContext: MailContext): Promise<void>;
+    abstract sendAdminNotificationEmail(emails: string[], mailContext: MailContext): Promise<AdminNotificationResult>;
     templateService: TemplateService;
     constructor() {
         this.templateService = new TemplateService(DOUBLE_CURLY_BRACE_REGEX);
@@ -79,15 +84,16 @@ class NodemailerEmailService extends BaseMailService {
         })
     }
 
-    async sendAdminNotificationEmail(email: string, mailContext: MailContext): Promise<void> {
+    async sendAdminNotificationEmail(emails: string[], mailContext: MailContext): Promise<AdminNotificationResult> {
         const mailTemplate = this.emailConfig.adminNotification;
         const template = this._getTemplate(mailTemplate.html, mailContext)
-        await this.transport.sendMail({
+        const info = await this.transport.sendMail({
             from: this.emailConfig.from,
-            to: email,
+            bcc: emails,
             subject: mailTemplate.subject,
             html: template
         })
+        return { accepted: info.accepted as string[], rejected: info.rejected as string[] };
     }
 }
 
@@ -101,9 +107,9 @@ class DisabledMailService extends BaseMailService {
         logger.debug('Mail service is disabled')
         return Promise.resolve();
     }
-    sendAdminNotificationEmail(email: string, mailContext: MailContext): Promise<void> {
+    sendAdminNotificationEmail(emails: string[], mailContext: MailContext): Promise<AdminNotificationResult> {
         logger.debug('Mail service is disabled')
-        return Promise.resolve();
+        return Promise.resolve({ accepted: emails, rejected: [] });
     }
 }
 

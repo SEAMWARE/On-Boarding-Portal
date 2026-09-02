@@ -29,16 +29,13 @@ class AdminNotificationService {
             logger.warn('Admin notification is enabled but no recipient could be resolved');
             return;
         }
-        const results = await Promise.allSettled(
-            recipients.map(email => emailService.sendAdminNotificationEmail(email, mailContext))
-        );
-        results.forEach((result, index) => {
-            if (result.status === 'rejected') {
-                logger.warn(`Unable to send admin notification email to '${recipients[index]}'`, result.reason);
-            } else {
-                logger.info(`Admin notification email sent to '${recipients[index]}'`);
-            }
-        });
+        try {
+            const { accepted, rejected } = await emailService.sendAdminNotificationEmail(recipients, mailContext);
+            accepted.forEach(email => logger.info(`Admin notification email sent to '${email}'`));
+            rejected.forEach(email => logger.warn(`Admin notification email rejected for '${email}'`));
+        } catch (error) {
+            logger.warn(`Unable to send admin notification email to [${recipients.join(', ')}]`, error);
+        }
     }
 
     private async _resolveRecipients(): Promise<string[]> {
