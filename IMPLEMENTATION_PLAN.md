@@ -30,12 +30,17 @@ Open questions:
   added by another writer cannot be lost to a client-side GET→DELETE race.
 - **Q3 — status codes of `DELETE <registry>/issuer/{did}/credential?scope&scopeType`:** for issuer
   missing, issuer present but nothing matches the scope, and success. In particular: can a TIL-1
-  registry return `404` for an issuer that exists?
+  registry return `404` for an issuer that exists? If it can, record the **discriminator** that
+  tells that 404 apart from a pre-TIL-1 "no such route" 404 (a distinct error body/code, a header,
+  or a capability/version endpoint). Step 3's legacy fallback depends on it.
 - **Q4 — what does `GET <registry>/issuer/{did}` expose?** Today `{ did, credentials: [...] }`.
   Does TIL-1 add the issuer's remaining scopes?
-- **Q5 — what does a pre-TIL-1 registry do with the scope?** Expected: it ignores unknown query
-  params on `POST` (the scoped register "succeeds" unscoped, documented in the README) and answers
-  the unknown `/credential` route with `404`/`405`/`501`.
+- **Q5 — what does a pre-TIL-1 registry do with the scope?** Confirm against the current FIWARE
+  TIL (Micronaut) instead of assuming: the exact status **and body** it returns for the unknown
+  `DELETE /issuer/{did}/credential` route (most likely a plain `404`, not `405`/`501`), and whether
+  it ignores unknown query params on `POST` (then the scoped register "succeeds" unscoped and
+  nothing is logged). Also record whether a TIL-1 `POST` response echoes the stored scope, so the
+  portal could detect an ignored scope and warn.
 
 Fixed regardless of the answers: query parameters `scope=<dataspaceId>` and `scopeType=dataspace`,
 in named constants.
@@ -53,7 +58,9 @@ exits 1). Add a minimal one so that the later steps are covered by tests.
 - Exclude `**/*.spec.ts` in `backend/tsconfig.json` so that `pnpm exec tsc` (the Dockerfile
   build) does not emit tests into `dist/`. Because vitest strips types without checking them, add
   `backend/tsconfig.spec.json` (extends `tsconfig.json`, `noEmit: true`, includes `src/**/*.ts`
-  with the specs) and set `"test": "tsc -p tsconfig.spec.json && vitest run"`, so specs are
+  with the specs, and sets **`"exclude": ["node_modules", "dist"]`** — with `extends`, an unset
+  `exclude` is inherited, so the base `**/*.spec.ts` exclusion would silently skip the specs) and
+  set `"test": "tsc -p tsconfig.spec.json && vitest run"`, so specs are
   type-checked against the changing `registerIssuer`/`unregisterIssuer` signatures. Make sure the
   Dockerfile build still works.
 - Create `backend/src/service/registry-client.spec.ts`:
@@ -96,7 +103,9 @@ and what the portal should write instead is a product decision.
     POST to `withScope(url, dataspaceId)`. If the response status is in the unsupported set,
     `logger.warn` that the registry does not support scoped writes and retry once **unscoped**
     (today's request). If `dataspaceId` is not set, send today's request unchanged. Keep the
-    existing error handling for the final response.
+    existing error handling for the final response. If Q5 recorded that TIL-1 echoes the stored
+    scope in the `POST` response, also `logger.warn` when a 2xx response lacks it (the registry
+    ignored the scope); otherwise there is nothing to detect.
 - `backend/src/service/til.service.ts`: carry `dataspaceId` in `TilEntry` and pass it to
   `registerIssuer`.
 - `backend/src/service/tir.service.ts`: take the `TirConfig` (or `url` + `dataspaceId`) and pass
@@ -116,6 +125,12 @@ and what the portal should write instead is a product decision.
 **Acceptance:** Q1/Q5 are recorded in the plan. With `dataspaceId` configured, an issuer
 registered through the portal is POSTed with `?scope=<id>&scopeType=dataspace`. Without it, the
 requests are byte-for-byte the same as before. `pnpm test` and `pnpm exec tsc` pass.
+
+**Known gap (ticket acceptance "falls back to the unscoped calls and logs it"):** for
+registration this is only met when the older registry *rejects* the scoped call (`405`/`501`), or
+when Q5 recorded a scope echo the portal can check. A pre-TIL-1 registry that ignores unknown query
+params answers 2xx, and the entry is written unscoped **without a log line**. Call this out in the
+step PR so the human reviewer can accept it or ask for a capability probe.
 
 ### Step 3: Scoped unregistration — remove only the scoped trust, never another party's
 **First answer Q2–Q4** (see the TIL-1 contract section) and record them in the plan; block if they
@@ -145,11 +160,16 @@ contract proves nobody else's trust is lost**.
       - A `404` on that GET → the issuer is already gone: `issuer-removed`.
     - `405`/`501` → the registry does not support TIL-1: `logger.warn` and fall back to the
       legacy unscoped `DELETE <url>/{did}`.
-    - `404` → `GET <url>/{did}`: `404` → `not-found` (same as today). `200` → fall back to the
-      legacy DELETE **only if Q3 confirms that a TIL-1 registry never returns `404` for an
-      existing issuer**. Otherwise a TIL-1 registry answering "no credential matches this scope"
-      with 404 would have its issuer wiped; in that case log a warning and return `not-found`
-      without deleting.
+    - `404` → `GET <url>/{did}`: `404` → `not-found` (same as today). `200` → this is the branch
+      a pre-TIL-1 TIL most likely lands in (unknown route → `404`, see Q5), so it must keep older
+      TILs working:
+      - Q3 says a TIL-1 registry never returns `404` for an existing issuer → `logger.warn` and
+        fall back to the legacy DELETE.
+      - Q3 says it can, **and** records a discriminator → use it: "pre-TIL-1" → `logger.warn` and
+        legacy DELETE; "TIL-1, no matching scope" → `not-found`, no delete.
+      - Q3 says it can and there is **no** discriminator → **stop with `blocked`** and ask for one.
+        Neither choice is acceptable: falling back wipes issuers on TIL-1 registries, and not
+        falling back means participants are never removed from older TILs.
     - Any other non-OK (`400`, `5xx`, …) → `logger.warn` and return `failed`. Never fall back
       here, because the fallback is destructive.
   - Put the fallback decision in one small helper (for example `scopedDeleteUnsupported(...)`)
@@ -166,8 +186,8 @@ contract proves nobody else's trust is lost**.
   methods passed to `fetch` and the returned outcome. At minimum: the scoped DELETE URL is exactly
   `<url>/<did>/credential?scope=<id>&scopeType=dataspace`; an issuer left with `credentials: []`
   but another scope → no issuer DELETE; `405`/`501` → legacy DELETE plus a warning; 404 + issuer
-  missing → `not-found` and no legacy DELETE; the 404 + issuer-exists branch matches the recorded
-  Q3 answer; `400`/`500` → `failed` and no fallback; no `dataspaceId` → legacy only.
+  missing → `not-found` and no legacy DELETE; 404 + issuer exists → legacy DELETE for the recorded
+  pre-TIL-1 response, and (if Q3 has a discriminator) no delete for the TIL-1 "no match" response; `400`/`500` → `failed` and no fallback; no `dataspaceId` → legacy only.
 
 **Acceptance:** Q2–Q4 are recorded in the plan. Removing a participant through the portal leaves
 order-granted and differently-scoped trust in place on a TIL-1 registry, including issuers that
