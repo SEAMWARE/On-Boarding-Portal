@@ -68,19 +68,32 @@ docker build -t onboarding:latest .   # build frontend first; image runs `node i
   `TemplateService` (`service/template.service.ts`), *not* by env substitution. An unknown key
   silently becomes `""`.
 - Frontend prettier: `printWidth 100`, `singleQuote`.
+- Backend style: 4-space indent, double-quoted imports, module-level singletons
+  (`export const fooService = new FooService(configService.get()...)`).
+- Doc-comment density is **very low**: backend has ~1 JSDoc block in all of `src/`, only
+  sparse `//` comments explaining *why*. Add one-line JSDoc only on new/changed public
+  functions; don't document untouched code.
+- TIR (`app.tir`) and every TIL (`app.til[]`) are written through the same two functions in
+  `service/registry-client.ts` (`registerIssuer`/`unregisterIssuer`); `normalizeIssuerUrl`
+  appends `/issuer` to a bare host. `registration.service.ts` is the only caller of
+  `tirService`/`tilService`. TIR failure aborts/rolls back; TIL failures are logged only.
+- Importing `service/logger.ts` loads `configService` (reads YAML) at module load — mock
+  `./logger` in unit tests.
 
 ## Important Files
 - `backend/src/index.ts` — server bootstrap, middleware chain, route mounting.
 - `backend/src/middleware/auth.middleware.ts` — OIDC bearer-token guard for admin API.
 - `backend/src/service/openid.service.ts` — token validation (`openid-client`/`jose`).
 - `backend/src/service/keycloak.service.ts` — provisions Keycloak clients on approval.
-- `backend/src/service/did.service.ts`, `tir.service.ts` — DID issuance + TIR registration.
+- `backend/src/service/did.service.ts`, `tir.service.ts`, `til.service.ts`,
+  `registry-client.ts` — DID issuance + TIR/TIL registration.
+- `backend/src/type/app-config.ts` — typed config (`TirConfig`, `TilConfig`, ...).
 - `backend/src/config/application.default.yaml` — server/database/login/keycloak/email config.
 - `Dockerfile` — multi-stage build; serves Angular build as static assets.
 
 ## Cross-repo
 - Helm chart: `onboarding-portal` in [`../helm-charts`](../helm-charts) (see its
-  [`CLAUDE.md`](../helm-charts/CLAUDE.md)).
+  [`AGENTS.md`](../helm-charts/AGENTS.md)).
 - Deployed into the operator/governance namespace by [`../internal-infra`](../internal-infra).
 - DID issuance relies on [`../did-helper`](../did-helper) (Go); the in-repo
   `did.service.ts` is currently a placeholder. did-helper (`didType: keycloak`) publishes each
@@ -89,5 +102,5 @@ docker build -t onboarding:latest .   # build frontend first; image runs `node i
 - ⚠️ `../internal-infra/deploy/values/onboarding.yaml` overrides
   `app.keycloak.additionalClientScopes` wholesale with the pre-26.4 model, and `deepMerge`
   *replaces* arrays — that override shadows the in-repo template and still needs porting.
-- Broader context: [`../CLAUDE.md`](../CLAUDE.md) and
+- Broader context: [`../AGENTS.md`](../AGENTS.md) and
   [`../docs/dsc-architecture.md`](../docs/dsc-architecture.md).
