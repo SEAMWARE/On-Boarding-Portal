@@ -41,6 +41,17 @@ Open questions:
   it ignores unknown query params on `POST` (then the scoped register "succeeds" unscoped and
   nothing is logged). Also record whether a TIL-1 `POST` response echoes the stored scope, so the
   portal could detect an ignored scope and warn.
+- **Q6 — what does a TIL-1 scoped `POST` do when the issuer already exists?** For example,
+  because an order flow or another data space registered it. Does it add the scope to the existing
+  issuer (2xx), return a conflict (today the portal maps `419` to "already registered"; record
+  the actual code), or require a separate scoped add/update call (`PUT`, a credential-level
+  `POST`, …)? If it returns a conflict, the membership scope is never attached unless the portal
+  makes that second call.
+- **Q7 — how does a TIL-1 registry treat unscoped (legacy) entries?** Existing issuers were all
+  written without a scope. Does a scoped `DELETE` match or remove them? Does a scoped `POST` on an
+  unscoped issuer attach the scope? Step 3 does not depend on the answer, because the portal
+  records how it wrote each entry (see step 2), but the answer goes in the plan so the README can
+  describe the migration correctly.
 
 Fixed regardless of the answers: query parameters `scope=<dataspaceId>` and `scopeType=dataspace`,
 in named constants.
@@ -79,9 +90,9 @@ error in a spec fails `pnpm test`. `pnpm exec tsc` still compiles, and `dist/` c
 files. Production code is unchanged.
 
 ### Step 2: Data space id in config and scoped registration with fallback
-**First answer Q1 and Q5** (see the TIL-1 contract section) and record them in the plan. If Q1 is
-"per credential only", stop with `blocked`: registering `credentials: []` cannot carry a scope,
-and what the portal should write instead is a product decision.
+**First answer Q1, Q5, Q6 and Q7** (see the TIL-1 contract section) and record them in the plan.
+If Q1 is "per credential only", stop with `blocked`: registering `credentials: []` cannot carry a
+scope, and what the portal should write instead is a product decision.
 
 - `backend/src/type/app-config.ts`: add `dataspaceId?: string` to **both** `TilConfig` and
   `TirConfig`. The TIR (the trust anchor's registry) goes through the same client and needs the
@@ -99,17 +110,46 @@ and what the portal should write instead is a product decision.
     with both query params set. Do not mutate the input. It is always applied to the **fully
     built** request URL (path first, query last), never to the registry base before path
     segments are appended.
-  - `registerIssuer(url, trusterIssuer, credentials, dataspaceId?)`: if `dataspaceId` is set,
-    POST to `withScope(url, dataspaceId)`. If the response status is in the unsupported set,
-    `logger.warn` that the registry does not support scoped writes and retry once **unscoped**
-    (today's request). If `dataspaceId` is not set, send today's request unchanged. Keep the
-    existing error handling for the final response. If Q5 recorded that TIL-1 echoes the stored
-    scope in the `POST` response, also `logger.warn` when a 2xx response lacks it (the registry
-    ignored the scope); otherwise there is nothing to detect.
+  - Change the signature to an options object, so the optional arguments cannot be swapped:
+    `registerIssuer(url, trusterIssuer, { credentials?, dataspaceId }: RegisterOptions = {})`.
+    `credentials` still defaults to `trusterIssuer.credentials`. Update the step-1 baseline
+    tests; the spec type-check catches any call that was missed. The call returns the scope it was
+    actually written with (`string`, or `null` when written unscoped), which the caller records.
+  - If `dataspaceId` is set, POST to `withScope(url, dataspaceId)`. If the response status is in
+    the unsupported set, `logger.warn` that the registry does not support scoped writes and retry
+    once **unscoped** (today's request, returns `null`). If `dataspaceId` is not set, send today's
+    request unchanged. Keep the existing error handling for the final response. If Q5 recorded
+    that TIL-1 echoes the stored scope in the `POST` response, also `logger.warn` when a 2xx
+    response lacks it (the registry ignored the scope); otherwise there is nothing to detect.
+  - **Existing issuer (Q6).** With `dataspaceId` set, handle the recorded "issuer already exists"
+    answer for the scoped POST:
+    - TIL-1 adds the scope to the existing issuer (2xx) → nothing extra.
+    - It returns a conflict and the contract has a scoped add/update call → make that call; its
+      2xx counts as a scoped write.
+    - It returns a conflict and the contract has **no** such call → **stop with `blocked`**,
+      because the membership scope could never be attached to such an issuer.
+    - Without `dataspaceId`, or after the unscoped fallback, the conflict keeps today's
+      "already registered" error.
+- **Record how each registry was written** (needed by step 3 for entries that predate the scope;
+  see "Migration" there):
+  - `backend/src/entity/registration.entity.ts`: add a nullable `simple-json` column
+    `trustWrites?: Record<string, string | null> | null`. It maps each normalized registry URL
+    (TIR and every TIL) to the `dataspaceId` it was written with, or to `null` if it was written
+    unscoped. A registry the portal failed to write (for example a logged TIL error or a conflict)
+    has no key. `null` on the whole column means the registration predates this change.
+    `synchronize: true` in `application.default.yaml` adds the column; confirm that it also works
+    on MongoDB.
+  - `tirService.registerDid` returns the written scope. `tilService.registerDid` returns
+    `{ url, scope }` for each TIL it wrote successfully. `registrationService.register` builds the
+    map and returns it.
+  - `admin-registration.controller.ts` (`PUT /admin/registrations/:id`) persists the map in the
+    same `queryRunner` transaction as the status update, for example through a new
+    `registrationRepository.updateTrustWrites(...)`.
 - `backend/src/service/til.service.ts`: carry `dataspaceId` in `TilEntry` and pass it to
   `registerIssuer`.
 - `backend/src/service/tir.service.ts`: take the `TirConfig` (or `url` + `dataspaceId`) and pass
-  `dataspaceId` to `registerIssuer`. Update the `tirService` construction to match.
+  `{ dataspaceId }` to `registerIssuer` (no `undefined` placeholder for `credentials`). Update the
+  `tirService` construction to match.
 - `backend/src/config/application.default.yaml`: in the `til` comment, add `dataspaceId?` to the
   documented entry shape. Leave `tir: {}` as it is (unset means unscoped, so existing deployments
   behave as before).
@@ -120,11 +160,17 @@ and what the portal should write instead is a product decision.
 - Tests in `registry-client.spec.ts`, parameterized: the scoped POST URL is exactly
   `<url>?scope=<id>&scopeType=dataspace`; `405`/`501` each cause exactly one unscoped retry and a
   warning; 2xx causes no retry; `400`, `404` and `500` throw without a retry; no `dataspaceId`
-  sends exactly the legacy request.
+  sends exactly the legacy request. Each case also asserts the returned scope (`<id>` or `null`).
+  Add the Q6 branch as recorded (an existing issuer gets the scope, through the extra call if one
+  is needed). Add a `registration.service.spec.ts` (mocking `tirService`, `tilService`,
+  `keycloakService` and `./logger`): the returned map holds the TIR and each TIL with its
+  scope or `null`, and a failed TIL write has no key.
 
-**Acceptance:** Q1/Q5 are recorded in the plan. With `dataspaceId` configured, an issuer
-registered through the portal is POSTed with `?scope=<id>&scopeType=dataspace`. Without it, the
-requests are byte-for-byte the same as before. `pnpm test` and `pnpm exec tsc` pass.
+**Acceptance:** Q1 and Q5–Q7 are recorded in the plan. With `dataspaceId` configured, an issuer
+registered through the portal is POSTed with `?scope=<id>&scopeType=dataspace`, including when the
+issuer already exists in the registry. Every approved registration stores `trustWrites`. Without
+`dataspaceId`, the registry requests are byte-for-byte the same as before. `pnpm test` and
+`pnpm exec tsc` pass.
 
 **Known gap (ticket acceptance "falls back to the unscoped calls and logs it"):** for
 registration this is only met when the older registry *rejects* the scoped call (`405`/`501`), or
@@ -141,9 +187,26 @@ contract proves nobody else's trust is lost**.
 - Request URLs are built as today (`${url}/${did}`, no extra encoding, so the legacy request stays
   byte-identical), wrapped in `new URL(...)`, and only then passed to `withScope`, e.g.
   `withScope(new URL(`${url}/${did}/credential`), dataspaceId)` → `…/issuer/{did}/credential?scope=…`.
+- **Migration — the scope used for removal comes from `trustWrites`, not from the current
+  config.** Otherwise a participant written unscoped (before this change, or through the step-2
+  405/501 fallback) would be removed with a scoped DELETE that matches nothing. It would stay
+  fully trusted, and nobody would notice. `registrationService.unregister` takes the
+  `Registration` instead of the bare `did`, and both controller call sites pass it. For each
+  configured registry:
+  - `trustWrites` is `null` (registration predates this change) → legacy unscoped DELETE, as
+    today, with a `logger.info` naming the reason.
+  - Key maps to `null` (written unscoped) → legacy unscoped DELETE, as today.
+  - Key maps to an id → scoped DELETE with **that** id, even if `dataspaceId` was changed in the
+    config since.
+  - Key missing (the portal never wrote this registry) → no DELETE, `logger.info`. This avoids
+    removing an issuer another party registered.
+  Legacy entries are therefore removed the way they are today. Re-registering existing
+  participants with the scope (a backfill) is out of scope for this ticket; mention it in the
+  step PR as a possible follow-up.
 - Introduce `RemovalOutcome = 'issuer-removed' | 'scope-removed' | 'not-found' | 'failed'` and
-  return it from `unregisterIssuer(url, did, dataspaceId?)` and from `tirService`/`tilService`
-  `deleteDid` (step 4 needs to tell a scoped removal from a whole-issuer removal).
+  return it from `unregisterIssuer(url, did, { dataspaceId }: UnregisterOptions = {})` (an options
+  object, consistent with `registerIssuer`) and from `tirService`/`tilService` `deleteDid`
+  (step 4 needs to tell a scoped removal from a whole-issuer removal).
   - No `dataspaceId` → today's `DELETE <url>/{did}`, unchanged (`issuer-removed` / `not-found` /
     `failed`).
   - Otherwise `DELETE <url>/{did}/credential?scope=<id>&scopeType=dataspace`:
@@ -175,23 +238,34 @@ contract proves nobody else's trust is lost**.
   - Put the fallback decision in one small helper (for example `scopedDeleteUnsupported(...)`)
     next to the step-2 constants, so the recorded TIL-1 status codes live in one place. Also fix
     the existing debug log, which prints `response.body` (a stream). Use `await response.text()`.
-- `til.service.ts` / `tir.service.ts`: pass `dataspaceId` to `unregisterIssuer` and return the
-  outcome (`'failed'` where they currently return `false` on a thrown error).
-  `registration.service.ts` ignores the result for now.
+- `til.service.ts` / `tir.service.ts`: `deleteDid(did, scopes)` takes the recorded scope for each
+  registry and applies the rules from "Migration" above. It returns the outcome (`'failed'` where
+  it currently returns `false` on a thrown error). `registration.service.ts` must not ignore the
+  outcome: it logs `logger.warn` for `failed`, and for `not-found` on a registry that
+  `trustWrites` says the portal wrote, because there the participant may still be trusted.
 - `README.md`: add a short "Removing a participant" note. With `dataspaceId` set, the portal
   removes only its own data space scope; the issuer is deleted only when the registry (or a
   scope-aware check) shows nothing else trusts it, so order-granted and differently-scoped trust
   survives. Older registries fall back to deleting the whole issuer, and a warning is logged.
+  Participants registered before the scope was configured are still removed unscoped, as today
+  (with the Q7 answer).
 - Tests, parameterized over the branches above as finally recorded, asserting the exact URLs and
   methods passed to `fetch` and the returned outcome. At minimum: the scoped DELETE URL is exactly
   `<url>/<did>/credential?scope=<id>&scopeType=dataspace`; an issuer left with `credentials: []`
   but another scope → no issuer DELETE; `405`/`501` → legacy DELETE plus a warning; 404 + issuer
   missing → `not-found` and no legacy DELETE; 404 + issuer exists → legacy DELETE for the recorded
-  pre-TIL-1 response, and (if Q3 has a discriminator) no delete for the TIL-1 "no match" response; `400`/`500` → `failed` and no fallback; no `dataspaceId` → legacy only.
+  pre-TIL-1 response, and (if Q3 has a discriminator) no delete for the TIL-1 "no match" response;
+  `400`/`500` → `failed` and no fallback; no `dataspaceId` → legacy only.
+- In `registration.service.spec.ts`, parameterized over `trustWrites`: `null`, or a registry
+  mapped to `null` (an issuer written unscoped and a scoped DELETE that would match nothing) →
+  legacy DELETE, so the participant is **not** left trusted; a registry mapped to an id → a scoped
+  DELETE with that id, even when the configured `dataspaceId` differs; a missing key → no
+  DELETE; a `not-found`/`failed` outcome on a written registry → a warning.
 
 **Acceptance:** Q2–Q4 are recorded in the plan. Removing a participant through the portal leaves
 order-granted and differently-scoped trust in place on a TIL-1 registry, including issuers that
-another party registered with `credentials: []`. A pre-TIL-1 registry still works through the
+another party registered with `credentials: []`. A participant written unscoped (before this
+change, or through the fallback) is still removed. A pre-TIL-1 registry still works through the
 logged unscoped fallback. Tests and `tsc` pass.
 
 ### Step 4: Optional direct removal event to the publisher's `/events` (off by default)
