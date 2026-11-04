@@ -415,8 +415,13 @@ later does not strand earlier participants):
   registry the portal wrote are logged as warnings: the participant may still be trusted there.
 
 Entries that were removed are dropped from `trustWrites` on deactivation; the rest (failed
-removals, entries the portal did not write) stay recorded. A re-approval keeps such a leftover
-instead of marking the registry as "already registered", so a later removal still deletes it.
+removals, entries the portal did not write) stay recorded. Deleting a deactivated registration
+retries the removal of these leftovers (the realm is already gone) and logs a warning for any that
+still remain, since the deletion drops the last record of them. A re-approval keeps a scoped
+leftover instead of marking the registry as "already registered", so a later removal still deletes
+that grant. An unscoped leftover is not kept: removing it deletes the whole issuer, which may by
+then be another party's (the leftover was cleaned up by hand and the DID registered again). The
+registry is recorded as "already registered" and a warning asks for a manual check.
 
 Existing participants are not re-registered with the scope (no backfill). A registry that ignored
 `scopeType` when the participant was written (the pre-TIL-1 fork) stores an untyped grant; if it is

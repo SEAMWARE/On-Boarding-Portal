@@ -10,6 +10,7 @@ import { logger } from "../service/logger";
 import { registrationService } from "../service/registration.service";
 import { MailContext } from "../type/main-context";
 import { keycloakService } from "../service/keycloak.service";
+import { TrustWrite } from "../type/trust-write";
 
 const router = Router()
 
@@ -75,22 +76,28 @@ router.get('/admin/registrations/:id', authFilter, async (req: Request, res: Res
 });
 
 router.delete('/admin/registrations/:id', authFilter, async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const queryRunner = registrationRepository.transaction();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
     try {
-        const { id } = req.params;
-
-        const queryRunner = registrationRepository.transaction();
-        await queryRunner.connect();
-        await queryRunner.startTransaction();
-
         const registration = await registrationRepository.findById(id, queryRunner);
         if (!registration) {
+            await queryRunner.rollbackTransaction();
             return res.status(404).json({
                 message: `Registration with ID ${id} not found`
             });
         }
 
+        let remaining: TrustWrite[] | null = null;
         if (registration.status === RegistrationStatus.ACTIVE) {
-            await registrationService.unregister(registration, registration.didGenerated);
+            remaining = await registrationService.unregister(registration, registration.didGenerated);
+        } else if (registration.trustWrites?.length) {
+            // A deactivation left trust it could not remove; retry, since deleting drops the last record of it.
+            remaining = await registrationService.unregister(registration);
+        }
+        if (remaining?.length) {
+            logger.warn(`Registration ${id} is deleted while its trust may still hold, remove manually: ${JSON.stringify(remaining)}`);
         }
         await registrationRepository.delete(id, queryRunner);
         logger.info(`Registration ${id} deleted by admin.`);
@@ -102,10 +109,13 @@ router.delete('/admin/registrations/:id', authFilter, async (req: Request, res: 
         });
     } catch (error) {
         logger.error('Error deleting registration:', error);
+        await queryRunner.rollbackTransaction();
         res.status(500).json({
             message: 'Error deleting the registration record',
             error: error instanceof Error ? error.message : 'Unknown error'
         });
+    } finally {
+        await queryRunner.release();
     }
 });
 
@@ -118,6 +128,7 @@ router.put('/admin/registrations/:id', authFilter, async (req: Request, res: Res
     try {
         const prevRegistration = await registrationRepository.findById(id, queryRunner);
         if (!prevRegistration) {
+            await queryRunner.rollbackTransaction();
             return res.status(404).json({
                 message: `Registration with ID ${id} not found`
             });

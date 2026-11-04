@@ -11,12 +11,24 @@ import { tilService } from "./til.service";
 const SETTLED_OUTCOMES: ReadonlySet<RemovalOutcome> = new Set(['issuer-removed', 'scope-removed', 'not-found']);
 
 /**
- * Keeps the portal's own earlier write (left by a failed removal) where the registry now reports the
- * issuer as already registered, and earlier writes to registries not written this time.
+ * Keeps earlier writes to registries not written this time, and the portal's own scoped leftover (left by a
+ * failed removal) where the registry now reports the issuer as already registered.
  */
-function mergeTrustWrites(previous: TrustWrite[], current: TrustWrite[]): TrustWrite[] {
-    const merged = current.map((write) => !write.alreadyRegistered ? write
-        : previous.find(({ registry, alreadyRegistered }) => registry === write.registry && !alreadyRegistered) ?? write);
+function mergeTrustWrites(did: string, previous: TrustWrite[], current: TrustWrite[]): TrustWrite[] {
+    const merged = current.map((write) => {
+        const leftover = write.alreadyRegistered
+            && previous.find(({ registry, alreadyRegistered }) => registry === write.registry && !alreadyRegistered);
+        if (!leftover) {
+            return write;
+        }
+        // An unscoped leftover would be removed by deleting the whole issuer, which may by now be another
+        // party's (the leftover was cleaned up by hand and the DID registered again), so ownership is not claimed.
+        if (leftover.scope === null) {
+            logger.warn(`DID ${did} is already registered in '${write.registry}', which may be the portal's unscoped leftover; it will not be removed with the participant, remove it manually if it is`);
+            return write;
+        }
+        return leftover;
+    });
     const written = new Set(current.map(({ registry }) => registry));
     return [...merged, ...previous.filter(({ registry }) => !written.has(registry))];
 }
@@ -43,7 +55,7 @@ class RegistrationService {
             const tirWrite = await tirService.registerDid(tirIssuer);
             const tilWrites = await tilService.registerDid(tirIssuer);
             trustWrites = [tirWrite, ...tilWrites];
-            const recorded = mergeTrustWrites(registration.trustWrites ?? [], trustWrites);
+            const recorded = mergeTrustWrites(registration.did, registration.trustWrites ?? [], trustWrites);
             await persistTrustWrites(recorded);
             return recorded;
         } catch(error) {

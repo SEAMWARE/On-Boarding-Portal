@@ -45,15 +45,20 @@ describe("RegistrationService.register", () => {
         expect(persistTrustWrites).toHaveBeenCalledWith([TIR_WRITE, ...tilWrites]);
     });
 
-    it.each<[string, TrustWrite[], TrustWrite[], TrustWrite[]]>([
-        // A failed earlier removal left the portal's own entry, so the TIL now reports it as existing.
-        ["keeps the portal's leftover over an already-registered entry",
-            [LEGACY_TIL_WRITE], [{ ...LEGACY_TIL_WRITE, scope: null, alreadyRegistered: true }], [TIR_WRITE, LEGACY_TIL_WRITE]],
-        ["keeps an earlier write to a registry not written now", [SCOPED_TIL_WRITE], [], [TIR_WRITE, SCOPED_TIL_WRITE]],
-        ["prefers the new write", [{ ...SCOPED_TIL_WRITE, scope: null }], [SCOPED_TIL_WRITE], [TIR_WRITE, SCOPED_TIL_WRITE]],
+    const conflictOn = (write: TrustWrite): TrustWrite => ({ registry: write.registry, scope: null, alreadyRegistered: true });
+
+    it.each<[string, TrustWrite[], TrustWrite[], TrustWrite[], boolean]>([
+        // A failed earlier removal left the portal's own grant, so the TIL now reports the issuer as existing.
+        ["keeps the portal's scoped leftover over an already-registered entry",
+            [SCOPED_TIL_WRITE], [conflictOn(SCOPED_TIL_WRITE)], [TIR_WRITE, SCOPED_TIL_WRITE], false],
+        // Removing an unscoped leftover deletes the whole issuer, which may by now be another party's.
+        ["keeps an already-registered entry over the portal's unscoped leftover and warns",
+            [LEGACY_TIL_WRITE], [conflictOn(LEGACY_TIL_WRITE)], [TIR_WRITE, conflictOn(LEGACY_TIL_WRITE)], true],
+        ["keeps an earlier write to a registry not written now", [SCOPED_TIL_WRITE], [], [TIR_WRITE, SCOPED_TIL_WRITE], false],
+        ["prefers the new write", [{ ...SCOPED_TIL_WRITE, scope: null }], [SCOPED_TIL_WRITE], [TIR_WRITE, SCOPED_TIL_WRITE], false],
         ["keeps an already-registered entry without a leftover", [EXISTING_TIL_WRITE], [EXISTING_TIL_WRITE],
-            [TIR_WRITE, EXISTING_TIL_WRITE]],
-    ])("on re-approval %s", async (_, previous, tilWrites, expected) => {
+            [TIR_WRITE, EXISTING_TIL_WRITE], false],
+    ])("on re-approval %s", async (_, previous, tilWrites, expected, warns) => {
         vi.mocked(tirService.registerDid).mockResolvedValue(TIR_WRITE);
         vi.mocked(tilService.registerDid).mockResolvedValue(tilWrites);
 
@@ -61,6 +66,7 @@ describe("RegistrationService.register", () => {
             .resolves.toEqual(expected);
 
         expect(persistTrustWrites).toHaveBeenCalledWith(expected);
+        expect(vi.mocked(logger.warn).mock.calls.length > 0).toBe(warns);
     });
 
     it("removes the generated realm and rethrows when the TIR write fails", async () => {
