@@ -212,3 +212,15 @@ describe("RegistrationService.removeLeftovers", () => {
         }
     });
 });
+
+describe("RegistrationService.holdsRecordedTrust", () => {
+    it.each<[string, TrustWrite[] | null | undefined, boolean]>([
+        ["no record", undefined, false],
+        ["a pre-change record", null, false],
+        ["all trust removed", [], false],
+        ["a leftover", [SCOPED_TIL_WRITE], true],
+        ["an unscoped leftover", [LEGACY_TIL_WRITE], true],
+    ])("with %s → %s", (_, trustWrites, expected) => {
+        expect(registrationService.holdsRecordedTrust({ did: DID, trustWrites } as Registration)).toBe(expected);
+    });
+});

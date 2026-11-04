@@ -294,8 +294,8 @@ contract proves nobody else's trust is lost**.
   DELETE; a `not-found`/`failed` outcome on a written registry → a warning.
 
 **Acceptance:** Q2–Q4 are recorded in the plan. Removing a participant through the portal leaves
-order-granted and differently-scoped trust in place on a TIL-1 registry, including issuers that
-another party registered with `credentials: []`. A participant written unscoped (before this
+order-granted and differently-scoped trust in place on a TIL-1 registry; an issuer left with no
+credentials is deleted (Q2 decision, including another party's `credentials: []` entry). A participant written unscoped (before this
 change, or through the fallback) is still removed. A pre-TIL-1 registry still works through the
 logged unscoped fallback. Tests and `tsc` pass.
 

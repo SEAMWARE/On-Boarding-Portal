@@ -9,6 +9,7 @@ import { storageService } from "../service/storage.service";
 import { uploadFiles } from "../middleware/storage.middleware";
 import { MailContext } from "../type/main-context";
 import { keycloakService } from "../service/keycloak.service";
+import { registrationService } from "../service/registration.service";
 
 const router = Router()
 
@@ -110,6 +111,12 @@ router.put('/registrations/submit/:id', uploadFiles('files', { maxCount: 5, allo
         if (!allowedStatus.includes(prevRegistration?.status)) {
             return res.status(404).json({
                 message: `Registration with ID ${id} cannot be updated in the current state`
+            });
+        }
+        if (data.did && data.did !== prevRegistration.did && registrationService.holdsRecordedTrust(prevRegistration)) {
+            await queryRunner.rollbackTransaction();
+            return res.status(409).json({
+                message: `The DID of registration ${id} cannot be changed while trust written for it may still be held`
             });
         }
 

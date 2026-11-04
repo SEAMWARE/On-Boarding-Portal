@@ -403,6 +403,7 @@ Removal follows how each registry was written (`registration.trustWrites`), not 
 Every write that may still hold (failed removal, registry no longer configured) is logged as a
 warning: check and remove it by hand. Deleting a deactivated registration retries scoped leftovers.
 After upgrading a pre-TIL-1 registry to TIL-1, remove the participants' untyped grants by hand.
+While leftovers are recorded, the participant cannot change the registration's DID (`409`).
 
 ### Environment variable substitution
 

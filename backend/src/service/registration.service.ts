@@ -113,6 +113,11 @@ class RegistrationService {
         return stillHolding(trustWrites, removals);
     }
 
+    /** True while recorded trust may still hold; its entries name no DID, so `did` must not change meanwhile. */
+    holdsRecordedTrust(registration: Registration): boolean {
+        return (registration.trustWrites?.length ?? 0) > 0;
+    }
+
     /** Retries scoped leftovers only; returns every leftover that may still hold, unlogged, for the caller to report. */
     async removeLeftovers(registration: Registration): Promise<TrustWrite[]> {
         const leftovers = (registration.trustWrites ?? []).filter(({ alreadyRegistered }) => !alreadyRegistered);
