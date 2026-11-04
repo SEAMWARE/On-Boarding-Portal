@@ -92,7 +92,7 @@ router.delete('/admin/registrations/:id', authFilter, async (req: Request, res: 
         const remaining = registration.status === RegistrationStatus.ACTIVE
             ? await registrationService.unregister(registration, registration.didGenerated)
             : await registrationService.removeLeftovers(registration);
-        if (remaining?.length) {
+        if (remaining.length) {
             logger.warn(`Registration ${id} is deleted while its trust may still hold, check and remove it manually: ${JSON.stringify(remaining)}`);
         }
         await registrationRepository.delete(id, queryRunner);

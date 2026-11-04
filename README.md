@@ -417,7 +417,8 @@ later does not strand earlier participants):
 
 On deactivation `trustWrites` keeps only the portal's own writes that may still hold (failed
 removals, registries no longer configured); removed entries and entries the portal did not write
-are dropped. Deleting a deactivated registration retries the removal of the scoped leftovers (the
+are dropped. For a registration approved before `trustWrites` existed, a failed removal is recorded
+as an unscoped write. Deleting a deactivated registration retries the removal of the scoped leftovers (the
 realm is already gone) and logs a warning for every leftover that still remains, since the deletion
 drops the last record of them. Unscoped leftovers are only logged, not retried: removing one
 deletes the whole issuer, which may by then be another party's (the leftover was cleaned up by hand

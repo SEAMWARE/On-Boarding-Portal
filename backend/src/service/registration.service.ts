@@ -89,10 +89,10 @@ class RegistrationService {
     }
     /**
      * Removes the trust recorded in `registration.trustWrites`; outcomes that may leave it trusted are logged.
-     * Returns the portal's own writes that may still hold, for the caller to persist; unrecorded (`null`) stays
-     * `null`. `alreadyRegistered` entries are never returned: they are not the portal's to remove.
+     * Returns the portal's own writes that may still hold, for the caller to persist. A failed removal of
+     * unrecorded (`null`) writes is returned unscoped. `alreadyRegistered` entries are never returned.
      */
-    async unregister(registration: Registration, removeRealm: boolean = false): Promise<TrustWrite[] | null> {
+    async unregister(registration: Registration, removeRealm: boolean = false): Promise<TrustWrite[]> {
         const { did } = registration;
         const trustWrites = registration.trustWrites ?? null;
         if (removeRealm) {
@@ -115,7 +115,14 @@ class RegistrationService {
         trustWrites?.filter(({ registry }) => !configured.has(registry)).forEach((write) => {
             logger.warn(`DID ${did} was written to '${write.registry}' (scope ${write.scope}), which is no longer configured; it may still be trusted there`);
         });
-        return trustWrites && stillHolding(trustWrites, removals);
+        if (trustWrites === null) {
+            // Unrecorded writes were removed unscoped, so a failed one is kept as such: deleting the registration
+            // then reports it instead of dropping the last record of it.
+            return removals
+                .filter(({ outcome }) => outcome === 'failed')
+                .map(({ registry }) => ({ registry, scope: null }));
+        }
+        return stillHolding(trustWrites, removals);
     }
 
     /**

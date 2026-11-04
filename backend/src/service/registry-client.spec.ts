@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TrustWrite } from "../type/trust-write";
 import { TrusterIssuer } from "../type/truster-issuer";
 import { logger } from "./logger";
-import { AlreadyRegisteredError, normalizeIssuerUrl, registerIssuer, RemovalOutcome, removeRecordedTrust, unregisterIssuer, validateRegistryConfig, withScope } from "./registry-client";
+import { AlreadyRegisteredError, didPathSegment, normalizeIssuerUrl, registerIssuer, RemovalOutcome, removeRecordedTrust, unregisterIssuer, validateRegistryConfig, withScope } from "./registry-client";
 
 vi.mock("./logger", () => ({
     logger: { info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -129,6 +129,39 @@ describe("registerIssuer with dataspaceId", () => {
         respondWith(405, STATUS_CONFLICT);
 
         await expect(registerIssuer(REGISTRY_URL, issuer, options)).rejects.toBeInstanceOf(AlreadyRegisteredError);
+    });
+});
+
+describe("didPathSegment", () => {
+    it.each([
+        ["keeps a well-formed DID", DID, DID],
+        ["keeps colons and percent-encodes the rest", "did:web:a?x#y/z%3A", "did:web:a%3Fx%23y%2Fz%253A"],
+        ["cannot form a dot segment", "did:x/../did:web:victim", "did:x%2F..%2Fdid:web:victim"],
+    ])("%s", (_, did, expected) => {
+        expect(didPathSegment(did)).toBe(expected);
+    });
+
+    it.each(["..", "did-web:a", ""])("rejects %j without the did: prefix", (did) => {
+        expect(() => didPathSegment(did)).toThrow();
+    });
+});
+
+describe("crafted DIDs", () => {
+    const CRAFTED_DID = "did:web:a?x";
+    const ISSUER = `${REGISTRY_URL}/did:web:a%3Fx`;
+    const SCOPED = withScope(new URL(`${ISSUER}/credential`), DATASPACE_ID).toString();
+
+    it.each<[string, () => Promise<unknown>, number[], string[]]>([
+        ["scoped write", () => registerIssuer(REGISTRY_URL, { did: CRAFTED_DID, credentials: [] },
+            { credentials: [], dataspaceId: DATASPACE_ID }), [200], [`PUT ${SCOPED}`]],
+        ["scoped removal and its fallback", () => unregisterIssuer(REGISTRY_URL, CRAFTED_DID, { dataspaceId: DATASPACE_ID }),
+            [404, 200, 204], [`DELETE ${SCOPED}`, `GET ${ISSUER}`, `DELETE ${ISSUER}`]],
+    ])("%s address the DID as one path segment", async (_, call, statuses, expected) => {
+        respondWith(...statuses);
+
+        await call();
+
+        expect(fetchMock.mock.calls.map(([url, init]) => `${init?.method} ${String(url)}`)).toEqual(expected);
     });
 });
 

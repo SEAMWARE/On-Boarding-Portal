@@ -15,6 +15,8 @@ const STATUS_NOT_FOUND = 404;
 // Status codes a pre-TIL-1 registry may answer for the unknown scoped DELETE route. A 404 is
 // ambiguous (TIL-1 also uses it for a missing issuer) and is resolved by `classifyScopedDeleteFailure`.
 const SCOPED_DELETE_UNSUPPORTED_STATUSES: ReadonlySet<number> = new Set([405, 501]);
+const DID_PREFIX = 'did:';
+const ENCODED_COLON = /%3A/gi;
 // 409 is what TIL-1 answers for an existing issuer; 419 is kept for older registries.
 const ALREADY_REGISTERED_STATUSES: ReadonlySet<number> = new Set([409, 419]);
 
@@ -57,6 +59,17 @@ export function withScope(url: URL, dataspaceId: string): URL {
     return scoped;
 }
 
+/**
+ * Turns an unvalidated DID into one path segment, so `?`, `#`, `/` or dot segments cannot redirect the request
+ * to another issuer. `:` stays literal, so a well-formed DID's URL is unchanged. Throws without the `did:` prefix.
+ */
+export function didPathSegment(did: string): string {
+    if (!did.startsWith(DID_PREFIX)) {
+        throw new Error(`'${did}' is not a DID`);
+    }
+    return encodeURIComponent(did).replace(ENCODED_COLON, ':');
+}
+
 /** Fails fast on a scoped entry without credentials: TIL-1 stores the scope per credential only. */
 export function validateRegistryConfig({ url, credentials, dataspaceId }: RegistryConfig): void {
     if (dataspaceId && !credentials?.length) {
@@ -78,7 +91,7 @@ export async function registerIssuer(
     const { dataspaceId } = options;
     if (dataspaceId) {
         logger.info(`Grant DID ${trusterIssuer.did} membership of ${dataspaceId} in ${url}`)
-        const scopedUrl = withScope(new URL(`${url}/${trusterIssuer.did}/${SCOPED_CREDENTIALS_PATH}`), dataspaceId);
+        const scopedUrl = withScope(new URL(`${url}/${didPathSegment(trusterIssuer.did)}/${SCOPED_CREDENTIALS_PATH}`), dataspaceId);
         const response = await send(scopedUrl, 'PUT', credentials);
         await discard(response);
         if (response.ok) {
@@ -114,7 +127,7 @@ export async function unregisterIssuer(
 ): Promise<RemovalOutcome> {
     if (dataspaceId) {
         logger.info(`Revoke membership of ${dataspaceId} from DID ${did} in ${url}`)
-        const scopedUrl = withScope(new URL(`${url}/${did}/${SCOPED_CREDENTIALS_PATH}`), dataspaceId);
+        const scopedUrl = withScope(new URL(`${url}/${didPathSegment(did)}/${SCOPED_CREDENTIALS_PATH}`), dataspaceId);
         const response = await send(scopedUrl, 'DELETE');
         if (response.ok) {
             await discard(response);
@@ -157,10 +170,10 @@ export async function removeRecordedTrust(
     return unregisterIssuer(url, did, { dataspaceId: write.scope });
 }
 
-/** The legacy whole-issuer DELETE, byte-identical to the request before TIL-1. */
+/** The legacy whole-issuer DELETE, byte-identical to the request before TIL-1 for a well-formed DID. */
 async function deleteIssuer(url: URL, did: string): Promise<RemovalOutcome> {
     logger.info(`Unregister DID ${did} from ${url}`)
-    const response = await send(`${url}/${did}`, 'DELETE');
+    const response = await send(`${url}/${didPathSegment(did)}`, 'DELETE');
     if (response.ok) {
         await discard(response);
         return 'issuer-removed';
@@ -174,7 +187,7 @@ async function deleteIssuer(url: URL, did: string): Promise<RemovalOutcome> {
  * TIL-1 has no conditional DELETE, so a credential another writer adds between GET and DELETE is lost.
  */
 async function removeIssuerIfEmpty(url: URL, did: string): Promise<RemovalOutcome> {
-    const response = await send(new URL(`${url}/${did}`), 'GET');
+    const response = await send(new URL(`${url}/${didPathSegment(did)}`), 'GET');
     if (response.status === STATUS_NOT_FOUND) {
         await discard(response);
         return 'issuer-removed';
@@ -208,7 +221,7 @@ async function classifyScopedDeleteFailure(
     }
     // TIL-1 answers 404 only for a missing issuer, so an existing one means the route is unknown
     // (pre-TIL-1). An issuer created between the two requests would be deleted whole; accepted race.
-    const response = await send(new URL(`${url}/${did}`), 'GET');
+    const response = await send(new URL(`${url}/${didPathSegment(did)}`), 'GET');
     await discard(response);
     if (response.ok) {
         return 'unsupported';

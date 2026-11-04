@@ -162,14 +162,16 @@ describe("RegistrationService.unregister", () => {
             .toBe(logged);
     });
 
-    it.each<[string, TrustWrite[] | null, RegistryRemoval[], TrustWrite[] | null]>([
+    it.each<[string, TrustWrite[] | null, RegistryRemoval[], TrustWrite[]]>([
         ["nothing for removed or missing entries", [TIR_WRITE, SCOPED_TIL_WRITE, LEGACY_TIL_WRITE],
             [removal(SCOPED_TIL_WRITE, "scope-removed"), removal(LEGACY_TIL_WRITE, "not-found")], []],
         ["a failed removal", [TIR_WRITE, SCOPED_TIL_WRITE], [removal(SCOPED_TIL_WRITE, "failed")], [SCOPED_TIL_WRITE]],
         ["nothing for an entry the portal did not write", [TIR_WRITE, EXISTING_TIL_WRITE],
             [removal(EXISTING_TIL_WRITE, null)], []],
         ["an unconfigured registry", [TIR_WRITE, LEGACY_TIL_WRITE], [], [LEGACY_TIL_WRITE]],
-        ["null for unrecorded trust writes", null, [removal(SCOPED_TIL_WRITE, "issuer-removed")], null],
+        ["nothing for removed unrecorded trust writes", null, [removal(SCOPED_TIL_WRITE, "issuer-removed")], []],
+        ["a failed unrecorded removal as unscoped", null, [removal(SCOPED_TIL_WRITE, "failed")],
+            [{ registry: SCOPED_TIL_WRITE.registry, scope: null }]],
     ])("returns %s as still holding", async (_, trustWrites, tilRemovals, expected) => {
         arrangeRemovals(removal(TIR_WRITE, "issuer-removed"), ...tilRemovals);
 
