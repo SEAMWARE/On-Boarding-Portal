@@ -16,6 +16,7 @@ const DID = "did:web:participant.example";
 const TIR_WRITE: TrustWrite = { registry: "http://tir.example/issuer", scope: "did:web:dataspace.example" };
 const SCOPED_TIL_WRITE: TrustWrite = { registry: "http://til-1.example/issuer", scope: "did:web:dataspace.example" };
 const LEGACY_TIL_WRITE: TrustWrite = { registry: "http://til-2.example/issuer", scope: null };
+const EXISTING_TIL_WRITE: TrustWrite = { registry: "http://til-3.example/issuer", scope: null, alreadyRegistered: true };
 
 const persistTrustWrites = vi.fn<(trustWrites: TrustWrite[]) => Promise<void>>();
 
@@ -58,12 +59,15 @@ describe("RegistrationService.register", () => {
     it("removes the generated realm and logs the written trust when persisting it fails", async () => {
         const failure = new Error("DB down");
         vi.mocked(tirService.registerDid).mockResolvedValue(TIR_WRITE);
-        vi.mocked(tilService.registerDid).mockResolvedValue([LEGACY_TIL_WRITE]);
+        vi.mocked(tilService.registerDid).mockResolvedValue([LEGACY_TIL_WRITE, EXISTING_TIL_WRITE]);
         persistTrustWrites.mockRejectedValueOnce(failure);
 
         await expect(registrationService.register(registration(true), persistTrustWrites)).rejects.toBe(failure);
 
         expect(keycloakService.removeRealm).toHaveBeenCalledWith(DID);
         expect(logger.error).toHaveBeenCalledWith(expect.stringContaining(TIR_WRITE.registry));
+        expect(logger.error).toHaveBeenCalledWith(expect.stringContaining(LEGACY_TIL_WRITE.registry));
+        // A pre-existing entry may be another party's trust, so it must not be listed for removal.
+        expect(logger.error).not.toHaveBeenCalledWith(expect.stringContaining(EXISTING_TIL_WRITE.registry));
     });
 });

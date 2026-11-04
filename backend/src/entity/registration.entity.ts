@@ -67,7 +67,8 @@ export class Registration {
     adminUrl?: string;
 
     toJSON() {
-        const { filesPath, ...registration } = this;
+        // trustWrites is internal removal bookkeeping; the public submit route must not expose registry URLs.
+        const { filesPath, trustWrites, ...registration } = this;
         if (this.status === RegistrationStatus.ACTIVE && this.didGenerated) {
             registration.adminUrl = keycloakService.getAdminUrl(this.did)
         }

@@ -1,3 +1,4 @@
+import { RegistryConfig } from "../type/app-config";
 import { IssuerCredentials, TrusterIssuer } from "../type/truster-issuer";
 import { externalRequest, logger } from "./logger";
 
@@ -16,13 +17,6 @@ const ALREADY_REGISTERED_STATUSES: ReadonlySet<number> = new Set([409, 419]);
 export class AlreadyRegisteredError extends Error {}
 
 export interface RegisterOptions {
-    credentials?: IssuerCredentials[];
-    dataspaceId?: string;
-}
-
-/** Registry entry as configured for the TIR or a TIL. */
-export interface RegistryConfig {
-    url: string;
     credentials?: IssuerCredentials[];
     dataspaceId?: string;
 }

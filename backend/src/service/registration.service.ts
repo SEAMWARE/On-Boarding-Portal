@@ -31,9 +31,11 @@ class RegistrationService {
             await persistTrustWrites(trustWrites);
             return trustWrites;
         } catch(error) {
-            if (trustWrites.length) {
-                // Registry entries are not rolled back yet; log them so an operator can remove them.
-                logger.error(`Approval of DID ${registration.did} failed after writing trust, remove manually: ${JSON.stringify(trustWrites)}`);
+            // Registry entries are not rolled back yet; log the portal's own so an operator can remove them.
+            // alreadyRegistered entries predate this approval and may be another party's trust.
+            const written = trustWrites.filter((write) => !write.alreadyRegistered);
+            if (written.length) {
+                logger.error(`Approval of DID ${registration.did} failed after writing trust, remove manually: ${JSON.stringify(written)}`);
             }
             logger.info('Remove realm because register DID failed');
             if (registration.didGenerated) {
