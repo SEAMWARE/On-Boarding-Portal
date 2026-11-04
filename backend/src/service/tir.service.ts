@@ -5,7 +5,7 @@ import { configService } from "./config.service";
 import { logger } from "./logger";
 import { normalizeIssuerUrl, registerIssuer, RegisterOptions, unregisterIssuer, validateRegistryConfig } from "./registry-client";
 
-class TirService {
+export class TirService {
     tirUrl: URL;
     private readonly options: RegisterOptions;
 

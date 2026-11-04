@@ -12,6 +12,9 @@ const SCOPED_WRITE_UNSUPPORTED_STATUSES: ReadonlySet<number> = new Set([404, 405
 // 409 is what TIL-1 answers for an existing issuer; 419 is kept for older registries.
 const ALREADY_REGISTERED_STATUSES: ReadonlySet<number> = new Set([409, 419]);
 
+/** The registry already holds an issuer with this DID, written by an earlier approval or another party. */
+export class AlreadyRegisteredError extends Error {}
+
 export interface RegisterOptions {
     credentials?: IssuerCredentials[];
     dataspaceId?: string;
@@ -74,7 +77,7 @@ export async function registerIssuer(
     const response = await send(url, 'POST', body);
     if (!response.ok) {
         if (ALREADY_REGISTERED_STATUSES.has(response.status)) {
-            throw new Error(`DID '${trusterIssuer.did}' already registered`)
+            throw new AlreadyRegisteredError(`DID '${trusterIssuer.did}' already registered`)
         }
         throw new Error(`Error registering did: ${response.status} ${response.statusText}`);
     }

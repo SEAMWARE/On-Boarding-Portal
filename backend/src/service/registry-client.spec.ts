@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TrusterIssuer } from "../type/truster-issuer";
 import { logger } from "./logger";
-import { normalizeIssuerUrl, registerIssuer, unregisterIssuer, validateRegistryConfig, withScope } from "./registry-client";
+import { AlreadyRegisteredError, normalizeIssuerUrl, registerIssuer, unregisterIssuer, validateRegistryConfig, withScope } from "./registry-client";
 
 vi.mock("./logger", () => ({
     logger: { info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -66,14 +66,18 @@ describe("registerIssuer", () => {
     });
 
     it.each([
-        [STATUS_ALREADY_REGISTERED, `DID '${DID}' already registered`],
-        [STATUS_CONFLICT, `DID '${DID}' already registered`],
-        [400, "Error registering did: 400"],
-        [500, "Error registering did: 500"],
-    ])("rejects on status %i", async (status, message) => {
+        [STATUS_ALREADY_REGISTERED, `DID '${DID}' already registered`, true],
+        [STATUS_CONFLICT, `DID '${DID}' already registered`, true],
+        [400, "Error registering did: 400", false],
+        [500, "Error registering did: 500", false],
+    ])("rejects on status %i", async (status, message, alreadyRegistered) => {
         respondWith(status);
 
-        await expect(registerIssuer(REGISTRY_URL, issuer)).rejects.toThrow(message);
+        const error = await registerIssuer(REGISTRY_URL, issuer).catch((e: unknown) => e);
+
+        expect(error).toBeInstanceOf(Error);
+        expect((error as Error).message).toContain(message);
+        expect(error instanceof AlreadyRegisteredError).toBe(alreadyRegistered);
     });
 });
 
@@ -119,7 +123,7 @@ describe("registerIssuer with dataspaceId", () => {
     it("reports an existing issuer as already registered after the fallback", async () => {
         respondWith(405, STATUS_CONFLICT);
 
-        await expect(registerIssuer(REGISTRY_URL, issuer, options)).rejects.toThrow(`DID '${DID}' already registered`);
+        await expect(registerIssuer(REGISTRY_URL, issuer, options)).rejects.toBeInstanceOf(AlreadyRegisteredError);
     });
 });
 

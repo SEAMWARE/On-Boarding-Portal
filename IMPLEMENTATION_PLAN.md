@@ -138,17 +138,23 @@ Q1 and Q5–Q7 are recorded above; option A was chosen for Q1.
     credentials (`null`). Without `dataspaceId`: today's POST unchanged. `409` and `419` on the POST
     both mean "already registered".
 - **Record how each registry was written** (needed by step 3, see "Migration" there):
-  - `backend/src/type/trust-write.ts`: `TrustWrite { registry: string; scope: string | null }`
-    (normalized registry URL, and the `dataspaceId` written or `null` for unscoped).
+  - `backend/src/type/trust-write.ts`: `TrustWrite { registry: string; scope: string | null;
+    alreadyRegistered?: true }` (normalized registry URL, the `dataspaceId` written or `null` for
+    unscoped, and a marker for a legacy/fallback POST that a TIL answered `409`/`419`: the issuer
+    is trusted there, but the portal did not create the entry). The marker is only set for TILs; on
+    the TIR an already-registered DID still aborts the approval, as before.
   - `backend/src/entity/registration.entity.ts`: nullable `simple-json` column
     `trustWrites?: TrustWrite[] | null`. An **array**, not a map keyed by URL: TypeORM's MongoDB
     driver stores the value as is, and URL keys would become dotted field names. A registry the
     portal failed to write has no entry; `null` on the whole column means the registration predates
     this change.
   - `tirService.registerDid` returns its `TrustWrite`; `tilService.registerDid` returns the
-    `TrustWrite`s of the TILs written successfully; `registrationService.register` returns all of
-    them; `PUT /admin/registrations/:id` persists them with
-    `registrationRepository.updateTrustWrites(...)` in the same `queryRunner` transaction.
+    `TrustWrite`s of the TILs that hold the issuer afterwards (written, or marked
+    `alreadyRegistered`); `registrationService.register(registration, persistTrustWrites)` calls the
+    callback inside its own try block, so a failing persist gets the same realm cleanup as a failing
+    TIR write and the written-but-unrecorded trust is logged with `logger.error`. The callback in
+    `PUT /admin/registrations/:id` persists them with `registrationRepository.updateTrustWrites(...)`
+    in the same `queryRunner` transaction.
 - `til.service.ts` carries `dataspaceId` in `TilEntry`; `tir.service.ts` takes the whole
   `TirConfig`.
 - `application.default.yaml` comments and `README.md` (`tir:`/`til:` example and the TIL row)
@@ -190,8 +196,19 @@ contract proves nobody else's trust is lost**.
   - Entry with `scope: null` (written unscoped) → legacy unscoped DELETE, as today.
   - Entry with a scope → scoped DELETE with **that** id, even if `dataspaceId` was changed in the
     config since.
+  - Entry with `alreadyRegistered` (the TIL held the issuer before the approval) → no DELETE,
+    `logger.warn` naming the registry, so an operator can remove it if it was the portal's own
+    leftover (for example from an earlier failed TIL removal). Deliberate change from today, which
+    would delete it: the entry may be another party's trust.
   - No entry for the registry (the portal never wrote it) → no DELETE, `logger.info`. This avoids
     removing an issuer another party registered.
+  - `trustWrites` entries whose `registry` matches no configured registry (the URL was changed or
+    the registry removed from the config) → no DELETE, but `logger.warn` with the registry and
+    scope: the participant may still be trusted there. Matching compares `normalizeIssuerUrl`
+    output, so only real URL changes miss; a stable per-registry id was considered and rejected as
+    extra config for a rare case.
+  - Orphaned writes logged by a failed approval (step 2) can be rolled back with the scoped
+    removal once it exists; until then they stay a manual cleanup.
   Legacy entries are therefore removed the way they are today. Re-registering existing
   participants with the scope (a backfill) is out of scope for this ticket; mention it in the
   step PR as a possible follow-up.

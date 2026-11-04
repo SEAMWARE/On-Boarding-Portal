@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { Registration } from "../entity/registration.entity";
 import { TrustWrite } from "../type/trust-write";
 import { keycloakService } from "./keycloak.service";
+import { logger } from "./logger";
 import { registrationService } from "./registration.service";
 import { tilService } from "./til.service";
 import { tirService } from "./tir.service";
@@ -15,6 +16,8 @@ const DID = "did:web:participant.example";
 const TIR_WRITE: TrustWrite = { registry: "http://tir.example/issuer", scope: "did:web:dataspace.example" };
 const SCOPED_TIL_WRITE: TrustWrite = { registry: "http://til-1.example/issuer", scope: "did:web:dataspace.example" };
 const LEGACY_TIL_WRITE: TrustWrite = { registry: "http://til-2.example/issuer", scope: null };
+
+const persistTrustWrites = vi.fn<(trustWrites: TrustWrite[]) => Promise<void>>();
 
 function registration(didGenerated: boolean): Registration {
     return { did: DID, didGenerated } as Registration;
@@ -33,18 +36,34 @@ describe("RegistrationService.register", () => {
         vi.mocked(tirService.registerDid).mockResolvedValue(TIR_WRITE);
         vi.mocked(tilService.registerDid).mockResolvedValue(tilWrites);
 
-        await expect(registrationService.register(registration(false))).resolves.toEqual([TIR_WRITE, ...tilWrites]);
+        await expect(registrationService.register(registration(false), persistTrustWrites))
+            .resolves.toEqual([TIR_WRITE, ...tilWrites]);
 
         expect(tirService.registerDid).toHaveBeenCalledWith({ did: DID, credentials: [] });
+        expect(persistTrustWrites).toHaveBeenCalledWith([TIR_WRITE, ...tilWrites]);
     });
 
     it("removes the generated realm and rethrows when the TIR write fails", async () => {
         const failure = new Error("TIR down");
         vi.mocked(tirService.registerDid).mockRejectedValue(failure);
 
-        await expect(registrationService.register(registration(true))).rejects.toBe(failure);
+        await expect(registrationService.register(registration(true), persistTrustWrites)).rejects.toBe(failure);
 
         expect(keycloakService.removeRealm).toHaveBeenCalledWith(DID);
         expect(tilService.registerDid).not.toHaveBeenCalled();
+        expect(persistTrustWrites).not.toHaveBeenCalled();
+        expect(logger.error).not.toHaveBeenCalled();
+    });
+
+    it("removes the generated realm and logs the written trust when persisting it fails", async () => {
+        const failure = new Error("DB down");
+        vi.mocked(tirService.registerDid).mockResolvedValue(TIR_WRITE);
+        vi.mocked(tilService.registerDid).mockResolvedValue([LEGACY_TIL_WRITE]);
+        persistTrustWrites.mockRejectedValueOnce(failure);
+
+        await expect(registrationService.register(registration(true), persistTrustWrites)).rejects.toBe(failure);
+
+        expect(keycloakService.removeRealm).toHaveBeenCalledWith(DID);
+        expect(logger.error).toHaveBeenCalledWith(expect.stringContaining(TIR_WRITE.registry));
     });
 });
