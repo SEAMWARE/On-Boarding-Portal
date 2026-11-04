@@ -75,22 +75,25 @@ router.get('/admin/registrations/:id', authFilter, async (req: Request, res: Res
 });
 
 router.delete('/admin/registrations/:id', authFilter, async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const queryRunner = registrationRepository.transaction();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
     try {
-        const { id } = req.params;
-
-        const queryRunner = registrationRepository.transaction();
-        await queryRunner.connect();
-        await queryRunner.startTransaction();
-
         const registration = await registrationRepository.findById(id, queryRunner);
         if (!registration) {
+            await queryRunner.rollbackTransaction();
             return res.status(404).json({
                 message: `Registration with ID ${id} not found`
             });
         }
 
-        if (registration.status === RegistrationStatus.ACTIVE) {
-            await registrationService.unregister(registration.did, registration.didGenerated);
+        // Deleting drops the last record of trust a deactivation could not remove, so retry it first.
+        const remaining = registration.status === RegistrationStatus.ACTIVE
+            ? await registrationService.unregister(registration, registration.didGenerated)
+            : await registrationService.removeLeftovers(registration);
+        if (remaining.length) {
+            logger.warn(`Registration ${id} is deleted while its trust may still hold, check and remove it manually: ${JSON.stringify(remaining)}`);
         }
         await registrationRepository.delete(id, queryRunner);
         logger.info(`Registration ${id} deleted by admin.`);
@@ -102,10 +105,13 @@ router.delete('/admin/registrations/:id', authFilter, async (req: Request, res: 
         });
     } catch (error) {
         logger.error('Error deleting registration:', error);
+        await queryRunner.rollbackTransaction();
         res.status(500).json({
             message: 'Error deleting the registration record',
             error: error instanceof Error ? error.message : 'Unknown error'
         });
+    } finally {
+        await queryRunner.release();
     }
 });
 
@@ -118,6 +124,7 @@ router.put('/admin/registrations/:id', authFilter, async (req: Request, res: Res
     try {
         const prevRegistration = await registrationRepository.findById(id, queryRunner);
         if (!prevRegistration) {
+            await queryRunner.rollbackTransaction();
             return res.status(404).json({
                 message: `Registration with ID ${id} not found`
             });
@@ -130,7 +137,8 @@ router.put('/admin/registrations/:id', authFilter, async (req: Request, res: Res
                 registration = (await registrationRepository.updateTrustWrites(registration.id, trustWrites, queryRunner))!;
             });
         } else if (prevRegistration.status === RegistrationStatus.ACTIVE && status !== RegistrationStatus.ACTIVE) {
-            await registrationService.unregister(registration.did, registration.didGenerated);
+            const remaining = await registrationService.unregister(registration, registration.didGenerated);
+            registration = (await registrationRepository.updateTrustWrites(registration.id, remaining, queryRunner))!;
         }
 
         await queryRunner.commitTransaction();

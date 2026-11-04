@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TilConfig } from "../type/app-config";
+import { TrustWrite } from "../type/trust-write";
 import { TrusterIssuer } from "../type/truster-issuer";
-import { AlreadyRegisteredError, registerIssuer } from "./registry-client";
+import { AlreadyRegisteredError, registerIssuer, removeRecordedTrust } from "./registry-client";
 import { TilService } from "./til.service";
 
 vi.mock("./logger", () => ({
@@ -12,6 +13,7 @@ vi.mock("./config.service", () => ({ configService: { get: () => ({ app: { til: 
 vi.mock("./registry-client", async (importOriginal) => ({
     ...await importOriginal<typeof import("./registry-client")>(),
     registerIssuer: vi.fn(),
+    removeRecordedTrust: vi.fn(),
 }));
 
 const DATASPACE_ID = "did:web:dataspace.example";
@@ -23,6 +25,7 @@ const FAILING_TIL: TilConfig = { url: "http://failing.example/issuer" };
 const EXISTING_TIL: TilConfig = { url: "http://existing.example/issuer" };
 
 const registerMock = vi.mocked(registerIssuer);
+const removeMock = vi.mocked(removeRecordedTrust);
 
 afterEach(() => {
     vi.clearAllMocks();
@@ -55,5 +58,27 @@ describe("TilService", () => {
             { credentials: CREDENTIALS, dataspaceId: DATASPACE_ID });
         expect(registerMock).toHaveBeenCalledWith(new URL(LEGACY_TIL.url), ISSUER,
             { credentials: undefined, dataspaceId: undefined });
+    });
+
+    it.each<[string, TrustWrite[] | null]>([
+        ["unrecorded", null],
+        // The recorded scope, not the configured dataspaceId, decides how the entry is removed.
+        ["recorded with another scope", [{ registry: "http://scoped.example/issuer", scope: "did:web:former.example" }]],
+    ])("removes the %s trust from every TIL and reports a thrown error as failed", async (_, trustWrites) => {
+        removeMock.mockImplementation(async (url) => {
+            if (url.host === new URL(FAILING_TIL.url).host) {
+                throw new Error("registry down");
+            }
+            return url.host === new URL(LEGACY_TIL.url).host ? null : "scope-removed";
+        });
+
+        const removals = await new TilService([SCOPED_TIL, LEGACY_TIL, FAILING_TIL]).deleteDid(ISSUER.did, trustWrites);
+
+        expect(removals).toEqual([
+            { registry: "http://scoped.example/issuer", outcome: "scope-removed" },
+            { registry: LEGACY_TIL.url, outcome: null },
+            { registry: FAILING_TIL.url, outcome: "failed" },
+        ]);
+        expect(removeMock).toHaveBeenCalledWith(new URL("http://scoped.example/issuer"), ISSUER.did, trustWrites);
     });
 });

@@ -3,7 +3,7 @@ import { TrusterIssuer } from "../type/truster-issuer";
 import { TrustWrite } from "../type/trust-write";
 import { configService } from "./config.service";
 import { logger } from "./logger";
-import { normalizeIssuerUrl, registerIssuer, RegisterOptions, unregisterIssuer, validateRegistryConfig } from "./registry-client";
+import { normalizeIssuerUrl, registerIssuer, RegisterOptions, RegistryRemoval, removeRecordedTrust, validateRegistryConfig } from "./registry-client";
 
 export class TirService {
     tirUrl: URL;
@@ -27,12 +27,14 @@ export class TirService {
         }
     }
 
-    async deleteDid(did: string): Promise<boolean> {
+    /** Removes the trust recorded in `trustWrites`; a thrown error becomes `failed`. */
+    async deleteDid(did: string, trustWrites: TrustWrite[] | null): Promise<RegistryRemoval> {
+        const registry = this.tirUrl.toString();
         try {
-            return await unregisterIssuer(this.tirUrl, did);
+            return { registry, outcome: await removeRecordedTrust(this.tirUrl, did, trustWrites) };
         } catch (error) {
             logger.error("Error removing did from TIR", error);
-            return false
+            return { registry, outcome: 'failed' };
         }
     }
 }

@@ -76,9 +76,27 @@ value of the TIL-1 `ScopeType` enum; any other value is rejected with `400`), in
 - **Q7:** unscoped credentials are never touched by the scoped PUT or DELETE; omitting `scopeType`
   addresses only untyped grants, never "any type". A scoped POST on an existing unscoped issuer
   answers `409` (not relevant any more, the portal uses the PUT).
-- **Q2/Q3 (preliminary, step 3 confirms):** the scoped DELETE answers `204`, `404` when the issuer
-  does not exist, `400` for a blank scope or unknown type. It deliberately keeps the issuer even when
-  no credential is left; there is no server-side orphan removal.
+- **Q2 (step 3, confirmed at `ticket-95/work` 2d4750c):** nobody. The scoped DELETE removes exactly
+  that (scope, scopeType) grant and deliberately keeps the issuer even when no credential is left,
+  "so that an issuer somebody else manages is not deleted as a side effect". With Q4 the client
+  cannot prove an issuer orphaned either. **Decision (PR #4 review), departing from the ticket's
+  "only when no credential is left" only in what counts as left:** an emptied issuer still grants
+  trust. TIL-1 `GET /v4/issuers/{did}` (and v5) answers `200` for any stored issuer, so it stays a
+  TIR participant, and FIWARE VCVerifier <5.0.0 skips the credential-type check, so on a TIL it is
+  trusted for every type (≥5.0.0 trusts it for none). After a scoped `2xx` on **any** registry the
+  portal therefore `GET`s `<url>/{did}` and deletes the issuer when `credentials` is empty
+  (`issuer-removed`), keeps it otherwise (`scope-removed`), and returns `failed` if it cannot tell.
+  Accepted costs: a credential added between the GET and the DELETE is lost, and another party's
+  unscoped `credentials: []` entry for the same DID is removed. Step 4/CM-4: after a TIR
+  `scope-removed` the issuer is still listed, but only because it holds other grants' credentials.
+- **Q3 (step 3, confirmed):** `DELETE /issuer/{did}/credential?scope&scopeType` answers `204` on
+  success (also when no grant matched the scope), `400` (`ProblemDetails`) for a blank scope or an
+  unknown type, and `404` (`ProblemDetails`) **only** when the issuer does not exist. A TIL-1
+  registry therefore never answers `404` for an existing issuer, and no discriminator is needed:
+  scoped `404` + `GET /issuer/{did}` `200` means the route is unknown (pre-TIL-1) → warn and legacy
+  DELETE; `GET` `404` → `not-found`.
+- **Q4 (step 3, confirmed):** `GET /issuer/{did}` still returns `TrustedIssuer { did, credentials }`;
+  `Credentials` carries no scope, so the issuer's remaining scopes are not exposed.
 
 ## Steps
 
@@ -174,7 +192,11 @@ registry requests are byte-for-byte the same as before. `pnpm test` and `pnpm ex
 
 **Known gap:** a registry that has the PUT route but ignores `scopeType` (the fork's pre-TIL-1
 `main`) stores an untyped grant without a log line; neither response echoes the scope. The step-3
-scoped DELETE addresses that grant the same way, so removal stays consistent.
+scoped DELETE addresses that grant the same way, so removal stays consistent, unless the registry
+is upgraded to TIL-1 in between: the typed DELETE then answers `204` without matching the untyped
+grant, and the participant stays trusted there without a warning (README: remove by hand). Unscoped
+leftovers are never retried on registration delete, only logged: by then a whole-issuer DELETE may
+hit another party's entry.
 
 ### Step 3: Scoped unregistration — remove only the scoped trust, never another party's
 **First answer Q2–Q4** (see the TIL-1 contract section) and record them in the plan; block if they
@@ -272,8 +294,8 @@ contract proves nobody else's trust is lost**.
   DELETE; a `not-found`/`failed` outcome on a written registry → a warning.
 
 **Acceptance:** Q2–Q4 are recorded in the plan. Removing a participant through the portal leaves
-order-granted and differently-scoped trust in place on a TIL-1 registry, including issuers that
-another party registered with `credentials: []`. A participant written unscoped (before this
+order-granted and differently-scoped trust in place on a TIL-1 registry; an issuer left with no
+credentials is deleted (Q2 decision, including another party's `credentials: []` entry). A participant written unscoped (before this
 change, or through the fallback) is still removed. A pre-TIL-1 registry still works through the
 logged unscoped fallback. Tests and `tsc` pass.
 

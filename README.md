@@ -390,6 +390,21 @@ didGenerator:
   didWebHost: did:web:example.com    # Base domain for generated did:web identifiers
 ```
 
+#### Removing a participant
+
+Removal follows how each registry was written (`registration.trustWrites`), not the current config:
+
+- **Scoped:** only the data space's membership grant is revoked; an issuer left with no credentials
+  is then deleted, one that still holds other grants is kept. A registry without the scoped route
+  falls back to deleting the whole issuer and logs a warning.
+- **Unscoped, or approved before `trustWrites` existed:** the whole issuer is deleted, as before.
+- **Already registered before the approval, or never written:** nothing is deleted.
+
+Every write that may still hold (failed removal, registry no longer configured) is logged as a
+warning: check and remove it by hand. Deleting a deactivated registration retries scoped leftovers.
+After upgrading a pre-TIL-1 registry to TIL-1, remove the participants' untyped grants by hand.
+While leftovers are recorded, the participant cannot change the registration's DID (`409`).
+
 ### Environment variable substitution
 
 Any value in the YAML can reference an environment variable using `${VAR_NAME}`:

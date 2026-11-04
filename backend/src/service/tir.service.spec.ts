@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TirConfig } from "../type/app-config";
+import { TrustWrite } from "../type/trust-write";
 import { TrusterIssuer } from "../type/truster-issuer";
-import { registerIssuer } from "./registry-client";
+import { registerIssuer, removeRecordedTrust } from "./registry-client";
 import { TirService } from "./tir.service";
 
 vi.mock("./logger", () => ({
@@ -12,6 +13,7 @@ vi.mock("./config.service", () => ({ configService: { get: () => ({ app: { tir: 
 vi.mock("./registry-client", async (importOriginal) => ({
     ...await importOriginal<typeof import("./registry-client")>(),
     registerIssuer: vi.fn(),
+    removeRecordedTrust: vi.fn(),
 }));
 
 const DATASPACE_ID = "did:web:dataspace.example";
@@ -19,6 +21,7 @@ const CREDENTIALS: TirConfig["credentials"] = [{ credentialsType: "MembershipCre
 const ISSUER: TrusterIssuer = { did: "did:web:participant.example", credentials: [] };
 
 const registerMock = vi.mocked(registerIssuer);
+const removeMock = vi.mocked(removeRecordedTrust);
 
 afterEach(() => {
     vi.clearAllMocks();
@@ -47,5 +50,18 @@ describe("TirService", () => {
         registerMock.mockRejectedValue(failure);
 
         await expect(new TirService({ url: "http://tir.example" }).registerDid(ISSUER)).rejects.toBe(failure);
+    });
+
+    it.each<[string, () => Promise<unknown>, string]>([
+        ["the removal outcome", async () => "scope-removed", "scope-removed"],
+        ["a thrown error as failed", async () => { throw new Error("TIR down"); }, "failed"],
+    ])("removes the recorded trust and returns %s", async (_, removal, outcome) => {
+        const trustWrites: TrustWrite[] = [{ registry: "http://tir.example/issuer", scope: DATASPACE_ID }];
+        removeMock.mockImplementation(removal as typeof removeRecordedTrust);
+
+        await expect(new TirService({ url: "http://tir.example" }).deleteDid(ISSUER.did, trustWrites))
+            .resolves.toEqual({ registry: "http://tir.example/issuer", outcome });
+
+        expect(removeMock).toHaveBeenCalledWith(new URL("http://tir.example/issuer"), ISSUER.did, trustWrites);
     });
 });
