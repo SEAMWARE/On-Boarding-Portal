@@ -27,6 +27,10 @@ function registration(didGenerated: boolean): Registration {
     return { did: DID, didGenerated } as Registration;
 }
 
+function removal({ registry }: TrustWrite, outcome: RegistryRemoval["outcome"]): RegistryRemoval {
+    return { registry, outcome };
+}
+
 afterEach(() => {
     vi.clearAllMocks();
 });
@@ -106,10 +110,6 @@ describe("RegistrationService.register", () => {
 
 describe("RegistrationService.unregister", () => {
     const RECORDED = [TIR_WRITE, SCOPED_TIL_WRITE, EXISTING_TIL_WRITE];
-
-    function removal({ registry }: TrustWrite, outcome: RegistryRemoval["outcome"]): RegistryRemoval {
-        return { registry, outcome };
-    }
 
     function arrangeRemovals(tir: RegistryRemoval, ...tils: RegistryRemoval[]): void {
         vi.mocked(tirService.deleteDid).mockResolvedValue(tir);
@@ -229,6 +229,25 @@ describe("RegistrationService.removeLeftovers", () => {
         } else {
             expect(tirService.deleteDid).not.toHaveBeenCalled();
             expect(tilService.deleteDid).not.toHaveBeenCalled();
+        }
+    });
+
+    // The first attempt failed and published nothing, so the retry is the only chance to announce the revocation.
+    it.each<[RegistryRemoval["outcome"], boolean]>([
+        ["scope-removed", true],
+        ["issuer-removed", true],
+        ["failed", false],
+        [null, false],
+    ])("announces a TIR leftover removal with outcome %s: %s", async (tirOutcome, published) => {
+        vi.mocked(tirService.deleteDid).mockResolvedValue(removal(TIR_WRITE, tirOutcome));
+        vi.mocked(tilService.deleteDid).mockResolvedValue([removal(SCOPED_TIL_WRITE, "scope-removed")]);
+
+        await registrationService.removeLeftovers({ did: DID, trustWrites: [TIR_WRITE, SCOPED_TIL_WRITE] } as Registration);
+
+        if (published) {
+            expect(eventService.publishParticipantRemoved).toHaveBeenCalledExactlyOnceWith(DID, tirOutcome);
+        } else {
+            expect(eventService.publishParticipantRemoved).not.toHaveBeenCalled();
         }
     });
 });

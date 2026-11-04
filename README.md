@@ -411,12 +411,13 @@ After upgrading a pre-TIL-1 registry to TIL-1, remove the participants' untyped 
 While leftovers are recorded, the participant cannot change the registration's DID (`409`).
 
 With `app.events.enabled`, the portal also announces each removal that revoked the TIR membership
-(`issuer-removed` or `scope-removed`) to the data space publisher's internal `POST /events`
-(contract-management on its management port), so participants learn about it right away. The event
+(`issuer-removed` or `scope-removed`), including a later leftover retry on deleting the registration,
+to the data space publisher's internal `POST /events` (contract-management on its management port),
+so participants learn about it right away. The event
 is `org.fiware.dataspace.participant.removed` with the DID as `subject` and `data.issuerRemoved`
 telling whether the TIR still lists the issuer for other trust. It requires `app.tir.dataspaceId`;
 without it or without `url`, a warning is logged at startup and nothing is sent. A failing
-publisher is logged and never fails the removal: the publisher's TIR watcher stays the backstop,
+or slow publisher (2 s timeout) is logged and never fails the removal: the publisher's TIR watcher stays the backstop,
 though it only notices a `scope-removed` removal if it is scope-aware. Downstream authorization
 does not change.
 

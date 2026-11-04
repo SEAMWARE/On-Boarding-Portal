@@ -96,10 +96,6 @@ class RegistrationService {
             logger.info(`DID ${did} was approved before trust writes were recorded, removing it unscoped`);
         }
         const removals = await this.removeTrust(did, trustWrites);
-        const [{ outcome: tirOutcome }] = removals;
-        if (revokesMembership(tirOutcome)) {
-            await eventService.publishParticipantRemoved(did, tirOutcome);
-        }
         for (const { registry, outcome } of removals) {
             const write = trustWrites?.find((recorded) => recorded.registry === registry);
             if (trustWrites && !write) {
@@ -139,12 +135,16 @@ class RegistrationService {
         return [...remaining, ...unscoped];
     }
 
+    // Every path that removes TIR trust goes through here, so each revoked membership is announced exactly once.
     private async removeTrust(did: string, trustWrites: TrustWrite[] | null): Promise<RegistryRemoval[]> {
-        const [tirRemoval, tilRemovals] = await Promise.all([
+        const [tir, tils] = await Promise.all([
             tirService.deleteDid(did, trustWrites),
             tilService.deleteDid(did, trustWrites),
         ]);
-        return [tirRemoval, ...tilRemovals];
+        if (revokesMembership(tir.outcome)) {
+            await eventService.publishParticipantRemoved(did, tir.outcome);
+        }
+        return [tir, ...tils];
     }
 }
 

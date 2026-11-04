@@ -6,8 +6,9 @@ import { RemovalOutcome } from "./registry-client";
 // Event type of a revoked data space membership, as named by the data space eventing epic.
 export const PARTICIPANT_REMOVED_TYPE = "org.fiware.dataspace.participant.removed";
 const PUBLISH_METHOD = "POST";
-// The removal waits for the publish, so a hanging publisher must not stall it.
-const PUBLISH_TIMEOUT_MS = 10_000;
+// The removal awaits the publish inside the caller's DB transaction; the cluster-internal publisher answers
+// 202 without waiting on delivery, so a short bound keeps a hanging publisher from holding the row lock.
+const PUBLISH_TIMEOUT_MS = 2_000;
 
 /** TIR outcomes that revoke the membership and are announced. */
 export type MembershipRevocation = Extract<RemovalOutcome, 'issuer-removed' | 'scope-removed'>;
