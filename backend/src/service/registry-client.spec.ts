@@ -283,10 +283,12 @@ describe("unregisterIssuer", () => {
             "issuer-removed", [SCOPED_DELETE, ISSUER_GET], false],
         ["reports an issuer deleted in between as removed", () => { respondWith(204); respondWithIssuer([]); respondWith(404); },
             "issuer-removed", [SCOPED_DELETE, ISSUER_GET, LEGACY_DELETE], false],
-        ["fails when the remaining credentials cannot be read", () => respondWith(204, 500),
-            "failed", [SCOPED_DELETE, ISSUER_GET], true],
-        ["fails when the empty issuer cannot be deleted", () => { respondWith(204); respondWithIssuer([]); respondWith(500); },
-            "failed", [SCOPED_DELETE, ISSUER_GET, LEGACY_DELETE], false],
+        ["leaves the issuer pending when the remaining credentials cannot be read", () => respondWith(204, 500),
+            "issuer-pending", [SCOPED_DELETE, ISSUER_GET], true],
+        ["leaves the issuer pending when the empty issuer cannot be deleted", () => { respondWith(204); respondWithIssuer([]); respondWith(500); },
+            "issuer-pending", [SCOPED_DELETE, ISSUER_GET, LEGACY_DELETE], false],
+        ["leaves the issuer pending when its check throws", () => { respondWith(204); fetchMock.mockRejectedValueOnce(new Error("down")); },
+            "issuer-pending", [SCOPED_DELETE, ISSUER_GET], true],
     ])("scoped removal %s", async (_, arrange, expected, calls, warns) => {
         arrange();
 

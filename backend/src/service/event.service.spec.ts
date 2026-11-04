@@ -45,6 +45,7 @@ describe("EventService", () => {
     it.each<[MembershipRevocation, boolean]>([
         ["issuer-removed", true],
         ["scope-removed", false],
+        ["issuer-pending", false],
     ])("POSTs one removal event for %s", async (outcome, issuerRemoved) => {
         fetchMock.mockResolvedValue(new Response(null, { status: STATUS_ACCEPTED }));
 

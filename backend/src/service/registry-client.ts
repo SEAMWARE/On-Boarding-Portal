@@ -25,8 +25,9 @@ const ALREADY_REGISTERED_STATUSES: ReadonlySet<number> = new Set([409, 419]);
 /** The registry already holds an issuer with this DID, written by an earlier approval or another party. */
 export class AlreadyRegisteredError extends Error {}
 
-/** What a removal did: `scope-removed` keeps the issuer, `not-found` means the registry did not hold it. */
-export type RemovalOutcome = 'issuer-removed' | 'scope-removed' | 'not-found' | 'failed';
+/** What a removal did: `scope-removed` keeps the issuer, `not-found` means the registry did not hold it.
+ * `issuer-pending`: the scoped grant is gone, but the issuer may still be listed empty (its check or DELETE failed). */
+export type RemovalOutcome = 'issuer-removed' | 'scope-removed' | 'issuer-pending' | 'not-found' | 'failed';
 
 /** Outcome of removing a participant from one registry; `outcome` is `null` when nothing was removed. */
 export interface RegistryRemoval {
@@ -182,27 +183,36 @@ async function deleteIssuer(url: URL, did: string): Promise<RemovalOutcome> {
     return response.status === STATUS_NOT_FOUND ? 'not-found' : 'failed';
 }
 
-// Deletes an issuer the scoped removal left without credentials; `failed` if it may still be listed.
+// Deletes an issuer the scoped removal left without credentials; `issuer-pending` if it may still be listed.
 async function removeIssuerIfEmpty(url: URL, did: string): Promise<RemovalOutcome> {
-    const response = await send(issuerUrl(url, did), 'GET');
-    if (response.status === STATUS_NOT_FOUND) {
-        await discard(response);
-        return 'issuer-removed';
+    try {
+        const response = await send(issuerUrl(url, did), 'GET');
+        if (response.status === STATUS_NOT_FOUND) {
+            await discard(response);
+            return 'issuer-removed';
+        }
+        if (!response.ok) {
+            logger.warn(`Revoked membership of DID '${did}' in '${url}' but could not check what is left ${response.status}: ${await response.text()}`);
+            return 'issuer-pending';
+        }
+        const { credentials } = await response.json() as Partial<TrusterIssuer>;
+        if (credentials?.length) {
+            logger.info(`Kept issuer ${did} in ${url}: it still holds credentials of other grants`);
+            return 'scope-removed';
+        }
+        logger.info(`Issuer ${did} holds no credentials in ${url} after revoking its membership, removing it`);
+        // TIL-1 has no conditional DELETE: a credential added since the GET is lost (accepted, see plan Q2).
+        const outcome = await deleteIssuer(url, did);
+        // Gone in between counts as removed: nothing is listed any more.
+        if (outcome === 'not-found') {
+            return 'issuer-removed';
+        }
+        return outcome === 'failed' ? 'issuer-pending' : outcome;
+    } catch (error) {
+        // The grant is already gone; a thrown error here must not hide that as `failed`.
+        logger.warn(`Revoked membership of DID '${did}' in '${url}' but could not remove what is left`, error);
+        return 'issuer-pending';
     }
-    if (!response.ok) {
-        logger.warn(`Revoked membership of DID '${did}' in '${url}' but could not check what is left ${response.status}: ${await response.text()}`);
-        return 'failed';
-    }
-    const { credentials } = await response.json() as Partial<TrusterIssuer>;
-    if (credentials?.length) {
-        logger.info(`Kept issuer ${did} in ${url}: it still holds credentials of other grants`);
-        return 'scope-removed';
-    }
-    logger.info(`Issuer ${did} holds no credentials in ${url} after revoking its membership, removing it`);
-    // TIL-1 has no conditional DELETE: a credential added since the GET is lost (accepted, see plan Q2).
-    const outcome = await deleteIssuer(url, did);
-    // Gone in between counts as removed: nothing is listed any more.
-    return outcome === 'not-found' ? 'issuer-removed' : outcome;
 }
 
 // Decides whether a failed scoped DELETE may fall back to the destructive unscoped one.

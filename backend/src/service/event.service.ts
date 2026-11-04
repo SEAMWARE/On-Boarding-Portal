@@ -11,7 +11,7 @@ const PUBLISH_METHOD = "POST";
 const PUBLISH_TIMEOUT_MS = 2_000;
 
 /** TIR outcomes that revoke the membership and are announced. */
-export type MembershipRevocation = Extract<RemovalOutcome, 'issuer-removed' | 'scope-removed'>;
+export type MembershipRevocation = Extract<RemovalOutcome, 'issuer-removed' | 'scope-removed' | 'issuer-pending'>;
 
 /** Body of the publisher's (CM-2) internal `POST /events`; it adds `source`, `dataspaceid` and the envelope. */
 export interface PublishRequest {
@@ -20,7 +20,7 @@ export interface PublishRequest {
     data: { issuerRemoved: boolean };
 }
 
-/** Removal event for `did`; `issuerRemoved` tells whether the TIR still lists the issuer for other trust. */
+/** Removal event for `did`; `issuerRemoved` is true when the issuer was deleted from the TIR, false while it is still listed. */
 export function participantRemovedEvent(did: string, outcome: MembershipRevocation): PublishRequest {
     return { type: PARTICIPANT_REMOVED_TYPE, subject: did, data: { issuerRemoved: outcome === 'issuer-removed' } };
 }

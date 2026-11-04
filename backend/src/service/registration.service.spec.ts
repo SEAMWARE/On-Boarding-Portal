@@ -134,6 +134,8 @@ describe("RegistrationService.unregister", () => {
 
     it.each<[string, TrustWrite[] | null, RegistryRemoval[], string[]]>([
         ["a failed removal", null, [removal(SCOPED_TIL_WRITE, "failed")], [SCOPED_TIL_WRITE.registry]],
+        ["an issuer that may still be listed", RECORDED, [removal(SCOPED_TIL_WRITE, "issuer-pending"),
+            removal(EXISTING_TIL_WRITE, null)], [SCOPED_TIL_WRITE.registry]],
         ["not-found on a registry the portal wrote", RECORDED, [removal(SCOPED_TIL_WRITE, "not-found"),
             removal(EXISTING_TIL_WRITE, null)], [SCOPED_TIL_WRITE.registry]],
         ["no registry: not-found without a record", null, [removal(SCOPED_TIL_WRITE, "not-found")], []],
@@ -167,6 +169,7 @@ describe("RegistrationService.unregister", () => {
     it.each<[RegistryRemoval["outcome"], RegistryRemoval["outcome"], boolean]>([
         ["issuer-removed", "failed", true],
         ["scope-removed", "not-found", true],
+        ["issuer-pending", "scope-removed", true],
         ["not-found", "scope-removed", false],
         ["failed", "issuer-removed", false],
         [null, "issuer-removed", false],
@@ -186,6 +189,8 @@ describe("RegistrationService.unregister", () => {
         ["nothing for removed or missing entries", [TIR_WRITE, SCOPED_TIL_WRITE, LEGACY_TIL_WRITE],
             [removal(SCOPED_TIL_WRITE, "scope-removed"), removal(LEGACY_TIL_WRITE, "not-found")], []],
         ["a failed removal", [TIR_WRITE, SCOPED_TIL_WRITE], [removal(SCOPED_TIL_WRITE, "failed")], [SCOPED_TIL_WRITE]],
+        ["a revoked grant whose issuer may still be listed", [TIR_WRITE, SCOPED_TIL_WRITE],
+            [removal(SCOPED_TIL_WRITE, "issuer-pending")], [SCOPED_TIL_WRITE]],
         ["nothing for an entry the portal did not write", [TIR_WRITE, EXISTING_TIL_WRITE],
             [removal(EXISTING_TIL_WRITE, null)], []],
         ["an unconfigured registry", [TIR_WRITE, LEGACY_TIL_WRITE], [], [LEGACY_TIL_WRITE]],
@@ -236,6 +241,7 @@ describe("RegistrationService.removeLeftovers", () => {
     it.each<[RegistryRemoval["outcome"], boolean]>([
         ["scope-removed", true],
         ["issuer-removed", true],
+        ["issuer-pending", true],
         ["failed", false],
         [null, false],
     ])("announces a TIR leftover removal with outcome %s: %s", async (tirOutcome, published) => {
