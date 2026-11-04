@@ -211,6 +211,45 @@ describe("unregisterIssuer", () => {
         expect(fetchCalls()).toEqual(calls);
         expect(logger.warn).toHaveBeenCalledTimes(warns ? 1 : 0);
     });
+
+    function respondWithIssuer(credentials: TrusterIssuer["credentials"]): void {
+        fetchMock.mockResolvedValueOnce(Response.json({ did: DID, credentials }));
+    }
+
+    it.each<[string, () => void, RemovalOutcome, FetchCall[], boolean]>([
+        ["deletes an issuer left without credentials", () => { respondWith(204); respondWithIssuer([]); respondWith(204); },
+            "issuer-removed", [SCOPED_DELETE, ISSUER_GET, LEGACY_DELETE], false],
+        ["keeps an issuer with other credentials", () => { respondWith(204); respondWithIssuer(ISSUER_CREDENTIALS); },
+            "scope-removed", [SCOPED_DELETE, ISSUER_GET], false],
+        ["reports an issuer already gone as removed", () => respondWith(204, 404),
+            "issuer-removed", [SCOPED_DELETE, ISSUER_GET], false],
+        ["reports an issuer deleted in between as removed", () => { respondWith(204); respondWithIssuer([]); respondWith(404); },
+            "issuer-removed", [SCOPED_DELETE, ISSUER_GET, LEGACY_DELETE], false],
+        ["fails when the remaining credentials cannot be read", () => respondWith(204, 500),
+            "failed", [SCOPED_DELETE, ISSUER_GET], true],
+        ["fails when the empty issuer cannot be deleted", () => { respondWith(204); respondWithIssuer([]); respondWith(500); },
+            "failed", [SCOPED_DELETE, ISSUER_GET, LEGACY_DELETE], false],
+        ["still falls back on an unsupported registry", () => respondWith(405, 204),
+            "issuer-removed", [SCOPED_DELETE, LEGACY_DELETE], true],
+    ])("scoped removal with removeEmptyIssuer %s", async (_, arrange, expected, calls, warns) => {
+        arrange();
+
+        await expect(unregisterIssuer(REGISTRY_URL, DID, { dataspaceId: DATASPACE_ID, removeEmptyIssuer: true }))
+            .resolves.toBe(expected);
+
+        expect(fetchCalls()).toEqual(calls);
+        expect(logger.warn).toHaveBeenCalledTimes(warns ? 1 : 0);
+    });
+
+    it("consumes every response it does not read", async () => {
+        const responses = [new Response("not found", { status: 404 }), new Response("{}", { status: 200 }),
+            new Response("gone", { status: 200 })];
+        responses.forEach((response) => fetchMock.mockResolvedValueOnce(response));
+
+        await unregisterIssuer(REGISTRY_URL, DID, { dataspaceId: DATASPACE_ID });
+
+        responses.forEach((response) => expect(response.bodyUsed || response.body?.locked).toBeTruthy());
+    });
 });
 
 describe("removeRecordedTrust", () => {

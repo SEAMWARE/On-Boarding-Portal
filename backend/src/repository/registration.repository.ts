@@ -25,7 +25,7 @@ class RegistrationRepository extends BaseRepository<Registration> {
         return super.update(id, { status, reason }, qr)
     }
 
-    async updateTrustWrites(id: string, trustWrites: TrustWrite[], qr?: QueryRunner): Promise<Registration | null> {
+    async updateTrustWrites(id: string, trustWrites: TrustWrite[] | null, qr?: QueryRunner): Promise<Registration | null> {
         return super.update(id, { trustWrites }, qr)
     }
 

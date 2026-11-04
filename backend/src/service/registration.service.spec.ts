@@ -45,6 +45,24 @@ describe("RegistrationService.register", () => {
         expect(persistTrustWrites).toHaveBeenCalledWith([TIR_WRITE, ...tilWrites]);
     });
 
+    it.each<[string, TrustWrite[], TrustWrite[], TrustWrite[]]>([
+        // A failed earlier removal left the portal's own entry, so the TIL now reports it as existing.
+        ["keeps the portal's leftover over an already-registered entry",
+            [LEGACY_TIL_WRITE], [{ ...LEGACY_TIL_WRITE, scope: null, alreadyRegistered: true }], [TIR_WRITE, LEGACY_TIL_WRITE]],
+        ["keeps an earlier write to a registry not written now", [SCOPED_TIL_WRITE], [], [TIR_WRITE, SCOPED_TIL_WRITE]],
+        ["prefers the new write", [{ ...SCOPED_TIL_WRITE, scope: null }], [SCOPED_TIL_WRITE], [TIR_WRITE, SCOPED_TIL_WRITE]],
+        ["keeps an already-registered entry without a leftover", [EXISTING_TIL_WRITE], [EXISTING_TIL_WRITE],
+            [TIR_WRITE, EXISTING_TIL_WRITE]],
+    ])("on re-approval %s", async (_, previous, tilWrites, expected) => {
+        vi.mocked(tirService.registerDid).mockResolvedValue(TIR_WRITE);
+        vi.mocked(tilService.registerDid).mockResolvedValue(tilWrites);
+
+        await expect(registrationService.register({ did: DID, trustWrites: previous } as Registration, persistTrustWrites))
+            .resolves.toEqual(expected);
+
+        expect(persistTrustWrites).toHaveBeenCalledWith(expected);
+    });
+
     it("removes the generated realm and rethrows when the TIR write fails", async () => {
         const failure = new Error("TIR down");
         vi.mocked(tirService.registerDid).mockRejectedValue(failure);
@@ -118,5 +136,19 @@ describe("RegistrationService.unregister", () => {
         expect(keycloakService.removeRealm).not.toHaveBeenCalled();
         expect(logger.warn).toHaveBeenCalledTimes(warned.length);
         warned.forEach((registry) => expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining(registry)));
+    });
+
+    it.each<[string, TrustWrite[] | null, RegistryRemoval[], TrustWrite[] | null]>([
+        ["nothing for removed or missing entries", [TIR_WRITE, SCOPED_TIL_WRITE, LEGACY_TIL_WRITE],
+            [removal(SCOPED_TIL_WRITE, "scope-removed"), removal(LEGACY_TIL_WRITE, "not-found")], []],
+        ["a failed removal", [TIR_WRITE, SCOPED_TIL_WRITE], [removal(SCOPED_TIL_WRITE, "failed")], [SCOPED_TIL_WRITE]],
+        ["an entry it did not remove", [TIR_WRITE, EXISTING_TIL_WRITE], [removal(EXISTING_TIL_WRITE, null)],
+            [EXISTING_TIL_WRITE]],
+        ["an unconfigured registry", [TIR_WRITE, LEGACY_TIL_WRITE], [], [LEGACY_TIL_WRITE]],
+        ["null for unrecorded trust writes", null, [removal(SCOPED_TIL_WRITE, "issuer-removed")], null],
+    ])("returns %s as still holding", async (_, trustWrites, tilRemovals, expected) => {
+        arrangeRemovals(removal(TIR_WRITE, "issuer-removed"), ...tilRemovals);
+
+        await expect(registrationService.unregister({ did: DID, trustWrites } as Registration)).resolves.toEqual(expected);
     });
 });

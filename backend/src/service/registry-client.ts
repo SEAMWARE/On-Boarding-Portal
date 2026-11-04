@@ -34,6 +34,9 @@ export interface RegistryRemoval {
 export interface UnregisterOptions {
     // Scope the trust was written with; `null`/absent removes the whole issuer as before TIL-1.
     dataspaceId?: string | null;
+    // After a scoped removal, delete the issuer once it holds no credential. Set for the TIR, whose
+    // `/v4/issuers/{did}` answers 200 for any listed issuer, so an empty one would stay trusted.
+    removeEmptyIssuer?: boolean;
 }
 
 export interface RegisterOptions {
@@ -80,6 +83,7 @@ export async function registerIssuer(
         logger.info(`Grant DID ${trusterIssuer.did} membership of ${dataspaceId} in ${url}`)
         const scopedUrl = withScope(new URL(`${url}/${trusterIssuer.did}/${SCOPED_CREDENTIALS_PATH}`), dataspaceId);
         const response = await send(scopedUrl, 'PUT', credentials);
+        await discard(response);
         if (response.ok) {
             return dataspaceId;
         }
@@ -92,6 +96,7 @@ export async function registerIssuer(
     logger.info(`Register DID ${trusterIssuer.did} in ${url}`)
     const body: TrusterIssuer = { ...trusterIssuer, credentials };
     const response = await send(url, 'POST', body);
+    await discard(response);
     if (!response.ok) {
         if (ALREADY_REGISTERED_STATUSES.has(response.status)) {
             throw new AlreadyRegisteredError(`DID '${trusterIssuer.did}' already registered`)
@@ -102,39 +107,38 @@ export async function registerIssuer(
 }
 
 /**
- * Removes the issuer's trust. With `dataspaceId` only that membership grant is revoked and the issuer
- * is kept, because TIL-1 exposes no scopes that could prove nobody else still trusts it.
+ * Removes the issuer's trust. With `dataspaceId` only that membership grant is revoked; the issuer is
+ * kept (TIL-1 exposes no scopes that could prove nobody else trusts it) unless `removeEmptyIssuer`.
  */
 export async function unregisterIssuer(
     url: URL,
     did: string,
-    { dataspaceId }: UnregisterOptions = {},
+    { dataspaceId, removeEmptyIssuer }: UnregisterOptions = {},
 ): Promise<RemovalOutcome> {
     if (dataspaceId) {
         logger.info(`Revoke membership of ${dataspaceId} from DID ${did} in ${url}`)
         const scopedUrl = withScope(new URL(`${url}/${did}/${SCOPED_CREDENTIALS_PATH}`), dataspaceId);
         const response = await send(scopedUrl, 'DELETE');
         if (response.ok) {
+            await discard(response);
+            if (removeEmptyIssuer) {
+                return removeIssuerIfEmpty(url, did);
+            }
             logger.info(`Kept issuer ${did} in ${url}: other grants or direct registrations may still trust it`);
             return 'scope-removed';
         }
         const failure = await classifyScopedDeleteFailure(url, did, response.status);
-        if (failure !== 'unsupported') {
-            if (failure === 'failed') {
-                logger.warn(`Error revoking membership of DID '${did}' from '${url}' ${response.status}: ${await response.text()}`);
-            }
+        if (failure === 'failed') {
+            logger.warn(`Error revoking membership of DID '${did}' from '${url}' ${response.status}: ${await response.text()}`);
+            return failure;
+        }
+        await discard(response);
+        if (failure === 'not-found') {
             return failure;
         }
         logger.warn(`Registry '${url}' does not support scoped removal (${response.status}), removing DID ${did} unscoped`);
     }
-
-    logger.info(`Unregister DID ${did} from ${url}`)
-    const response = await send(`${url}/${did}`, 'DELETE');
-    if (response.ok) {
-        return 'issuer-removed';
-    }
-    logger.debug(`Error removing DID '${did}' from '${url}' ${response.status}: ${await response.text()}`)
-    return response.status === STATUS_NOT_FOUND ? 'not-found' : 'failed';
+    return deleteIssuer(url, did);
 }
 
 /**
@@ -145,6 +149,7 @@ export async function removeRecordedTrust(
     url: URL,
     did: string,
     trustWrites: TrustWrite[] | null,
+    { removeEmptyIssuer }: Pick<UnregisterOptions, 'removeEmptyIssuer'> = {},
 ): Promise<RemovalOutcome | null> {
     if (trustWrites === null) {
         return unregisterIssuer(url, did);
@@ -158,7 +163,44 @@ export async function removeRecordedTrust(
         logger.warn(`DID ${did} was already registered in '${url}' before its approval, not removing it; remove it manually if it is the portal's leftover`);
         return null;
     }
-    return unregisterIssuer(url, did, { dataspaceId: write.scope });
+    return unregisterIssuer(url, did, { dataspaceId: write.scope, removeEmptyIssuer });
+}
+
+/** The legacy whole-issuer DELETE, byte-identical to the request before TIL-1. */
+async function deleteIssuer(url: URL, did: string): Promise<RemovalOutcome> {
+    logger.info(`Unregister DID ${did} from ${url}`)
+    const response = await send(`${url}/${did}`, 'DELETE');
+    if (response.ok) {
+        await discard(response);
+        return 'issuer-removed';
+    }
+    logger.debug(`Error removing DID '${did}' from '${url}' ${response.status}: ${await response.text()}`)
+    return response.status === STATUS_NOT_FOUND ? 'not-found' : 'failed';
+}
+
+/**
+ * Deletes an issuer the scoped removal left without credentials; `failed` if it may still be listed.
+ * TIL-1 has no conditional DELETE, so a credential another writer adds between GET and DELETE is lost.
+ */
+async function removeIssuerIfEmpty(url: URL, did: string): Promise<RemovalOutcome> {
+    const response = await send(new URL(`${url}/${did}`), 'GET');
+    if (response.status === STATUS_NOT_FOUND) {
+        await discard(response);
+        return 'issuer-removed';
+    }
+    if (!response.ok) {
+        logger.warn(`Revoked membership of DID '${did}' in '${url}' but could not check what is left ${response.status}: ${await response.text()}`);
+        return 'failed';
+    }
+    const { credentials } = await response.json() as Partial<TrusterIssuer>;
+    if (credentials?.length) {
+        logger.info(`Kept issuer ${did} in ${url}: it still holds credentials of other grants`);
+        return 'scope-removed';
+    }
+    logger.info(`Issuer ${did} holds no credentials in ${url} after revoking its membership, removing it`);
+    const outcome = await deleteIssuer(url, did);
+    // Gone in between counts as removed: nothing is listed any more.
+    return outcome === 'not-found' ? 'issuer-removed' : outcome;
 }
 
 /** Decides whether a failed scoped DELETE may fall back to the destructive unscoped one. */
@@ -176,10 +218,16 @@ async function classifyScopedDeleteFailure(
     // TIL-1 answers 404 only for a missing issuer, so an existing one means the route is unknown
     // (pre-TIL-1). An issuer created between the two requests would be deleted whole; accepted race.
     const response = await send(new URL(`${url}/${did}`), 'GET');
+    await discard(response);
     if (response.ok) {
         return 'unsupported';
     }
     return response.status === STATUS_NOT_FOUND ? 'not-found' : 'failed';
+}
+
+// Unread bodies hold their undici connection until garbage collection.
+async function discard(response: Response): Promise<void> {
+    await response.body?.cancel();
 }
 
 async function send(url: URL | string, method: string, body?: unknown): Promise<Response> {

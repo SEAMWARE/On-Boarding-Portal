@@ -79,8 +79,15 @@ value of the TIL-1 `ScopeType` enum; any other value is rejected with `400`), in
 - **Q2 (step 3, confirmed at `ticket-95/work` 2d4750c):** nobody. The scoped DELETE removes exactly
   that (scope, scopeType) grant and deliberately keeps the issuer even when no credential is left,
   "so that an issuer somebody else manages is not deleted as a side effect". With Q4 the client
-  cannot prove an issuer orphaned either, so the portal **never** deletes a scoped issuer whole
-  (the "Neither" branch: `logger.info`, return `scope-removed`).
+  cannot prove an issuer orphaned either, so on a TIL the portal **never** deletes a scoped issuer
+  whole (the "Neither" branch: `logger.info`, return `scope-removed`). **TIR exception (PR #4
+  review):** TIL-1 `GET /v4/issuers/{did}` (and v5) answers `200` for any stored issuer, credentials
+  or not, so an emptied TIR issuer would stay a trusted participant. After a scoped `2xx` on the
+  TIR the portal `GET`s `<url>/{did}` and deletes the issuer when `credentials` is empty
+  (`issuer-removed`), keeps it otherwise (`scope-removed`), and returns `failed` if it cannot tell.
+  Accepted costs: a credential added between the GET and the DELETE is lost, and another party's
+  unscoped `credentials: []` TIR entry for the same DID is removed. Step 4/CM-4: after a TIR
+  `scope-removed` the issuer is still listed, but only because it holds other grants' credentials.
 - **Q3 (step 3, confirmed):** `DELETE /issuer/{did}/credential?scope&scopeType` answers `204` on
   success (also when no grant matched the scope), `400` (`ProblemDetails`) for a blank scope or an
   unknown type, and `404` (`ProblemDetails`) **only** when the issuer does not exist. A TIL-1

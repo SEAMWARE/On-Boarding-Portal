@@ -130,7 +130,8 @@ router.put('/admin/registrations/:id', authFilter, async (req: Request, res: Res
                 registration = (await registrationRepository.updateTrustWrites(registration.id, trustWrites, queryRunner))!;
             });
         } else if (prevRegistration.status === RegistrationStatus.ACTIVE && status !== RegistrationStatus.ACTIVE) {
-            await registrationService.unregister(registration, registration.didGenerated);
+            const remaining = await registrationService.unregister(registration, registration.didGenerated);
+            registration = (await registrationRepository.updateTrustWrites(registration.id, remaining, queryRunner))!;
         }
 
         await queryRunner.commitTransaction();

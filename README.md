@@ -397,12 +397,16 @@ recorded in `registration.trustWrites` (not from the current config, so changing
 later does not strand earlier participants):
 
 - **Written with a scope:** only that data space's membership grant is revoked
-  (`DELETE <url>/<did>/credential?scope=<id>&scopeType=dataspace-membership`). The issuer itself
-  is kept: a TIL-1 registry never deletes it as a side effect and does not expose the remaining
-  scopes, so order-granted and differently-scoped trust (including another party's
-  `credentials: []` entry) survives. A registry without the scoped route (`405`/`501`, or `404`
-  while `GET <url>/<did>` finds the issuer) falls back to deleting the whole issuer and logs a
-  warning.
+  (`DELETE <url>/<did>/credential?scope=<id>&scopeType=dataspace-membership`). On a **TIL** the
+  issuer itself is kept: a TIL-1 registry never deletes it as a side effect and does not expose
+  the remaining scopes, so order-granted and differently-scoped trust (including another party's
+  `credentials: []` entry) survives. On the **TIR** the portal then reads the issuer and deletes it
+  when no credential is left, because the trusted-participant check (`GET /v4/issuers/<did>`)
+  answers `200` for any listed issuer and an empty one would stay a member. This drops another
+  party's unscoped `credentials: []` TIR entry for the same DID, and a credential written between
+  the read and the delete is lost (TIL-1 has no conditional delete). A registry without the scoped
+  route (`405`/`501`, or `404` while `GET <url>/<did>` finds the issuer) falls back to deleting the
+  whole issuer and logs a warning.
 - **Written unscoped, or approved before `trustWrites` existed:** the whole issuer is deleted
   (`DELETE <url>/<did>`), as before. TIL-1 scoped calls never touch such untyped entries.
 - **Already registered before the approval, or never written by the portal:** nothing is
@@ -410,7 +414,15 @@ later does not strand earlier participants):
 - A registry that was written but is no longer configured, a failed removal, or `not-found` on a
   registry the portal wrote are logged as warnings: the participant may still be trusted there.
 
-Existing participants are not re-registered with the scope (no backfill).
+Entries that were removed are dropped from `trustWrites` on deactivation; the rest (failed
+removals, entries the portal did not write) stay recorded. A re-approval keeps such a leftover
+instead of marking the registry as "already registered", so a later removal still deletes it.
+
+Existing participants are not re-registered with the scope (no backfill). A registry that ignored
+`scopeType` when the participant was written (the pre-TIL-1 fork) stores an untyped grant; if it is
+upgraded to TIL-1 before the removal, the typed scoped DELETE answers `204` without matching that
+grant and the participant stays trusted there without a warning. Remove such grants by hand after
+upgrading.
 
 ### Environment variable substitution
 

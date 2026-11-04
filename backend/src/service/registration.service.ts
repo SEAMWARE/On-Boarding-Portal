@@ -3,14 +3,29 @@ import { TrusterIssuer } from "../type/truster-issuer";
 import { TrustWrite } from "../type/trust-write";
 import { keycloakService } from "./keycloak.service";
 import { logger } from "./logger";
+import { RemovalOutcome } from "./registry-client";
 import { tirService } from "./tir.service";
 import { tilService } from "./til.service";
+
+// Outcomes after which the recorded write no longer grants membership in that registry.
+const SETTLED_OUTCOMES: ReadonlySet<RemovalOutcome> = new Set(['issuer-removed', 'scope-removed', 'not-found']);
+
+/**
+ * Keeps the portal's own earlier write (left by a failed removal) where the registry now reports the
+ * issuer as already registered, and earlier writes to registries not written this time.
+ */
+function mergeTrustWrites(previous: TrustWrite[], current: TrustWrite[]): TrustWrite[] {
+    const merged = current.map((write) => !write.alreadyRegistered ? write
+        : previous.find(({ registry, alreadyRegistered }) => registry === write.registry && !alreadyRegistered) ?? write);
+    const written = new Set(current.map(({ registry }) => registry));
+    return [...merged, ...previous.filter(({ registry }) => !written.has(registry))];
+}
 
 class RegistrationService {
 
     /**
-     * Writes the trust and hands it to `persistTrustWrites` inside the same rollback scope.
-     * Returns how each registry was written; a TIL that failed is missing from the result.
+     * Writes the trust and hands it, merged with the leftovers in `registration.trustWrites`, to
+     * `persistTrustWrites` inside the same rollback scope. Returns the persisted writes.
      */
     async register(
         registration: Registration,
@@ -28,8 +43,9 @@ class RegistrationService {
             const tirWrite = await tirService.registerDid(tirIssuer);
             const tilWrites = await tilService.registerDid(tirIssuer);
             trustWrites = [tirWrite, ...tilWrites];
-            await persistTrustWrites(trustWrites);
-            return trustWrites;
+            const recorded = mergeTrustWrites(registration.trustWrites ?? [], trustWrites);
+            await persistTrustWrites(recorded);
+            return recorded;
         } catch(error) {
             // Registry entries are not rolled back yet; log the portal's own so an operator can remove them.
             // alreadyRegistered entries predate this approval and may be another party's trust.
@@ -44,8 +60,11 @@ class RegistrationService {
             throw error;
         }
     }
-    /** Removes the trust recorded in `registration.trustWrites`; outcomes that may leave it trusted are logged. */
-    async unregister(registration: Registration, removeRealm: boolean = false) {
+    /**
+     * Removes the trust recorded in `registration.trustWrites`; outcomes that may leave it trusted are logged.
+     * Returns the writes that may still hold, for the caller to persist; unrecorded (`null`) stays `null`.
+     */
+    async unregister(registration: Registration, removeRealm: boolean = false): Promise<TrustWrite[] | null> {
         const { did } = registration;
         const trustWrites = registration.trustWrites ?? null;
         if (removeRealm) {
@@ -69,6 +88,10 @@ class RegistrationService {
         trustWrites?.filter(({ registry }) => !configured.has(registry)).forEach((write) => {
             logger.warn(`DID ${did} was written to '${write.registry}' (scope ${write.scope}), which is no longer configured; it may still be trusted there`);
         });
+        const settled = new Set(removals
+            .filter(({ outcome }) => outcome !== null && SETTLED_OUTCOMES.has(outcome))
+            .map(({ registry }) => registry));
+        return trustWrites && trustWrites.filter(({ registry }) => !settled.has(registry));
     }
 }
 
