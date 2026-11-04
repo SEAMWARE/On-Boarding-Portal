@@ -122,11 +122,13 @@ router.put('/admin/registrations/:id', authFilter, async (req: Request, res: Res
                 message: `Registration with ID ${id} not found`
             });
         }
-        const registration = (await registrationRepository.updateStatus(id as string, status, reason, queryRunner))!;
+        let registration = (await registrationRepository.updateStatus(id as string, status, reason, queryRunner))!;
 
         // Update realm and TIR
         if (prevRegistration.status !== RegistrationStatus.ACTIVE && status === RegistrationStatus.ACTIVE) {
-            await registrationService.register(registration);
+            await registrationService.register(registration, async (trustWrites) => {
+                registration = (await registrationRepository.updateTrustWrites(registration.id, trustWrites, queryRunner))!;
+            });
         } else if (prevRegistration.status === RegistrationStatus.ACTIVE && status !== RegistrationStatus.ACTIVE) {
             await registrationService.unregister(registration.did, registration.didGenerated);
         }

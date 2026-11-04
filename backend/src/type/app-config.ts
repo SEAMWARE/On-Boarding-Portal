@@ -30,10 +30,15 @@ export interface Logging {
     level: 'error' | 'warn' | 'info' | 'http' | 'verbose' | 'debug' | 'silly';
 }
 
-export interface TilConfig {
+/** Registry entry as configured for the TIR or a TIL. */
+export interface RegistryConfig {
     url: string;
-    credentials?: IssuerCredentials[]
+    credentials?: IssuerCredentials[];
+    // Publisher id of the data space whose membership this entry represents; requires
+    // `credentials`. Unset keeps the unscoped (legacy) calls.
+    dataspaceId?: string;
 }
+export type TilConfig = RegistryConfig;
 export interface AppCfg {
     login: LoginConfig;
     tir: TirConfig;
@@ -52,9 +57,7 @@ export interface LoginConfig {
     codeChallenge: boolean;
 }
 
-export interface TirConfig {
-    url: string;
-}
+export type TirConfig = RegistryConfig;
 
 export interface KeycloakConfig {
     didCreationEnabled: boolean;

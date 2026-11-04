@@ -25,7 +25,7 @@ A self-service portal that allows organizations to register on a decentralized t
 | [did-helper](https://github.com/SEAMWARE/did-helper) | — | DID document hosting with Keycloak integration (see below) |
 | SMTP server | any | Email notifications |
 | TIR | — | Trust Issuer Registry (optional) |
-| TIL | — | Trusted Issuers Lists — third-party registries notified alongside the TIR (optional, N endpoints) |
+| TIL | — | Trusted Issuers Lists — third-party registries notified alongside the TIR (optional, N endpoints; `dataspaceId` needs a TIL-1 scope-aware registry) |
 
 > **did-helper** must be configured with Keycloak integration enabled so that newly created realms can resolve their `did:web` documents. The portal calls did-helper to register the DID after provisioning each realm — without it, verifiable credential issuance will not work. Point `didGenerator.didWebHost` in `application.yaml` to the domain served by your did-helper instance.
 >
@@ -312,6 +312,26 @@ app:
   # Trust Issuer Registry
   tir:
     url: http://<tir-host>
+    # Optional: publisher id of the data space whose membership this entry represents.
+    # When set, the participant is written as that data space's membership grant
+    # (`PUT <url>/<did>/credential?scope=<dataspaceId>&scopeType=dataspace-membership`),
+    # which leaves order-granted and other data spaces' trust untouched. TIL-1 stores
+    # the scope per credential, so `credentials` must then be non-empty (checked at
+    # startup). Omit both to keep the legacy unscoped `POST <url>` with no credentials.
+    # Setting `credentials` also restricts the entry: the participant is stored with only
+    # the listed credential types (no longer the unrestricted `credentials: []`), on a
+    # TIL-1 registry and in the fallback POST alike. Verifiers that read the list as
+    # trusted-issuer config then accept only those types, so list every type the
+    # participant must stay trusted to issue.
+    # A registry without the scoped route (pre-TIL-1: 404/405/501) gets the legacy POST
+    # and a warning is logged; one that ignores `scopeType` stores an untyped grant.
+    # The way each registry was written is stored on the registration for removal, in
+    # the nullable `simple-json` column `registration.trustWrites`. There are no
+    # migrations: with `database.synchronize: false`, add that column by hand before
+    # upgrading (e.g. PostgreSQL: `ALTER TABLE registration ADD COLUMN "trustWrites" text NULL;`).
+    dataspaceId: <data-space-publisher-id>
+    credentials:
+      - credentialsType: MembershipCredential
 
   # Trusted Issuers Lists (optional): third-party registries notified alongside the TIR
   # on register/unregister. Each entry gets its own request, run in parallel. A failure
@@ -323,6 +343,8 @@ app:
       # empty list (same as the TIR) when omitted.
       credentials:
         - credentialsType: LegalPersonCredential
+      # Optional: as for `tir` above — scoped membership grant, requires `credentials`.
+      dataspaceId: <data-space-publisher-id>
     - url: http://<til-host-2>
 
 # ──────────────────────────────────────────────
