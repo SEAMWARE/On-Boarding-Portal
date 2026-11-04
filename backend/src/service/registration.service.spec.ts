@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { Registration } from "../entity/registration.entity";
 import { TrustWrite } from "../type/trust-write";
 import { RegistryRemoval } from "./registry-client";
+import { eventService } from "./event.service";
 import { keycloakService } from "./keycloak.service";
 import { logger } from "./logger";
 import { registrationService } from "./registration.service";
@@ -12,6 +13,7 @@ vi.mock("./logger", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.f
 vi.mock("./keycloak.service", () => ({ keycloakService: { createRealm: vi.fn(), removeRealm: vi.fn() } }));
 vi.mock("./tir.service", () => ({ tirService: { registerDid: vi.fn(), deleteDid: vi.fn() } }));
 vi.mock("./til.service", () => ({ tilService: { registerDid: vi.fn(), deleteDid: vi.fn() } }));
+vi.mock("./event.service", () => ({ eventService: { publishParticipantRemoved: vi.fn() } }));
 
 const DID = "did:web:participant.example";
 const TIR_WRITE: TrustWrite = { registry: "http://tir.example/issuer", scope: "did:web:dataspace.example" };
@@ -23,6 +25,10 @@ const persistTrustWrites = vi.fn<(trustWrites: TrustWrite[]) => Promise<void>>()
 
 function registration(didGenerated: boolean): Registration {
     return { did: DID, didGenerated } as Registration;
+}
+
+function removal({ registry }: TrustWrite, outcome: RegistryRemoval["outcome"]): RegistryRemoval {
+    return { registry, outcome };
 }
 
 afterEach(() => {
@@ -105,10 +111,6 @@ describe("RegistrationService.register", () => {
 describe("RegistrationService.unregister", () => {
     const RECORDED = [TIR_WRITE, SCOPED_TIL_WRITE, EXISTING_TIL_WRITE];
 
-    function removal({ registry }: TrustWrite, outcome: RegistryRemoval["outcome"]): RegistryRemoval {
-        return { registry, outcome };
-    }
-
     function arrangeRemovals(tir: RegistryRemoval, ...tils: RegistryRemoval[]): void {
         vi.mocked(tirService.deleteDid).mockResolvedValue(tir);
         vi.mocked(tilService.deleteDid).mockResolvedValue(tils);
@@ -132,6 +134,8 @@ describe("RegistrationService.unregister", () => {
 
     it.each<[string, TrustWrite[] | null, RegistryRemoval[], string[]]>([
         ["a failed removal", null, [removal(SCOPED_TIL_WRITE, "failed")], [SCOPED_TIL_WRITE.registry]],
+        ["an issuer that may still be listed", RECORDED, [removal(SCOPED_TIL_WRITE, "issuer-pending"),
+            removal(EXISTING_TIL_WRITE, null)], [SCOPED_TIL_WRITE.registry]],
         ["not-found on a registry the portal wrote", RECORDED, [removal(SCOPED_TIL_WRITE, "not-found"),
             removal(EXISTING_TIL_WRITE, null)], [SCOPED_TIL_WRITE.registry]],
         ["no registry: not-found without a record", null, [removal(SCOPED_TIL_WRITE, "not-found")], []],
@@ -162,10 +166,31 @@ describe("RegistrationService.unregister", () => {
             .toBe(logged);
     });
 
+    it.each<[RegistryRemoval["outcome"], RegistryRemoval["outcome"], boolean]>([
+        ["issuer-removed", "failed", true],
+        ["scope-removed", "not-found", true],
+        ["issuer-pending", "scope-removed", true],
+        ["not-found", "scope-removed", false],
+        ["failed", "issuer-removed", false],
+        [null, "issuer-removed", false],
+    ])("announces the removal for TIR outcome %s (TIL %s): %s", async (tirOutcome, tilOutcome, published) => {
+        arrangeRemovals(removal(TIR_WRITE, tirOutcome), removal(SCOPED_TIL_WRITE, tilOutcome));
+
+        await registrationService.unregister({ did: DID, trustWrites: [TIR_WRITE, SCOPED_TIL_WRITE] } as Registration);
+
+        if (published) {
+            expect(eventService.publishParticipantRemoved).toHaveBeenCalledExactlyOnceWith(DID, tirOutcome);
+        } else {
+            expect(eventService.publishParticipantRemoved).not.toHaveBeenCalled();
+        }
+    });
+
     it.each<[string, TrustWrite[] | null, RegistryRemoval[], TrustWrite[]]>([
         ["nothing for removed or missing entries", [TIR_WRITE, SCOPED_TIL_WRITE, LEGACY_TIL_WRITE],
             [removal(SCOPED_TIL_WRITE, "scope-removed"), removal(LEGACY_TIL_WRITE, "not-found")], []],
         ["a failed removal", [TIR_WRITE, SCOPED_TIL_WRITE], [removal(SCOPED_TIL_WRITE, "failed")], [SCOPED_TIL_WRITE]],
+        ["a revoked grant whose issuer may still be listed", [TIR_WRITE, SCOPED_TIL_WRITE],
+            [removal(SCOPED_TIL_WRITE, "issuer-pending")], [SCOPED_TIL_WRITE]],
         ["nothing for an entry the portal did not write", [TIR_WRITE, EXISTING_TIL_WRITE],
             [removal(EXISTING_TIL_WRITE, null)], []],
         ["an unconfigured registry", [TIR_WRITE, LEGACY_TIL_WRITE], [], [LEGACY_TIL_WRITE]],
@@ -209,6 +234,26 @@ describe("RegistrationService.removeLeftovers", () => {
         } else {
             expect(tirService.deleteDid).not.toHaveBeenCalled();
             expect(tilService.deleteDid).not.toHaveBeenCalled();
+        }
+    });
+
+    // The first attempt failed and published nothing, so the retry is the only chance to announce the revocation.
+    it.each<[RegistryRemoval["outcome"], boolean]>([
+        ["scope-removed", true],
+        ["issuer-removed", true],
+        ["issuer-pending", true],
+        ["failed", false],
+        [null, false],
+    ])("announces a TIR leftover removal with outcome %s: %s", async (tirOutcome, published) => {
+        vi.mocked(tirService.deleteDid).mockResolvedValue(removal(TIR_WRITE, tirOutcome));
+        vi.mocked(tilService.deleteDid).mockResolvedValue([removal(SCOPED_TIL_WRITE, "scope-removed")]);
+
+        await registrationService.removeLeftovers({ did: DID, trustWrites: [TIR_WRITE, SCOPED_TIL_WRITE] } as Registration);
+
+        if (published) {
+            expect(eventService.publishParticipantRemoved).toHaveBeenCalledExactlyOnceWith(DID, tirOutcome);
+        } else {
+            expect(eventService.publishParticipantRemoved).not.toHaveBeenCalled();
         }
     });
 });

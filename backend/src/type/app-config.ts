@@ -45,6 +45,13 @@ export interface AppCfg {
     til: TilConfig[];
     keycloak: KeycloakConfig;
     documentToSignUrl: string;
+    events: EventsConfig;
+}
+
+/** Direct removal event to the data space publisher (CM-2); `url` is its internal `POST /events`. */
+export interface EventsConfig {
+    enabled: boolean;
+    url?: string;
 }
 
 export interface LoginConfig {

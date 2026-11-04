@@ -1,6 +1,7 @@
 import { Registration } from "../entity/registration.entity";
 import { TrusterIssuer } from "../type/truster-issuer";
 import { TrustWrite } from "../type/trust-write";
+import { eventService, MembershipRevocation } from "./event.service";
 import { keycloakService } from "./keycloak.service";
 import { logger } from "./logger";
 import { RegistryRemoval, RemovalOutcome } from "./registry-client";
@@ -9,6 +10,13 @@ import { tilService } from "./til.service";
 
 // Outcomes after which the recorded write no longer grants membership in that registry.
 const SETTLED_OUTCOMES: ReadonlySet<RemovalOutcome> = new Set(['issuer-removed', 'scope-removed', 'not-found']);
+// Outcomes after which the participant may still be trusted in that registry.
+const UNSETTLED_OUTCOMES: ReadonlySet<RemovalOutcome> = new Set(['issuer-pending', 'failed']);
+
+// TIR outcomes that revoke the data space membership and are announced to the participants.
+function revokesMembership(outcome: RemovalOutcome | null): outcome is MembershipRevocation {
+    return outcome === 'issuer-removed' || outcome === 'scope-removed' || outcome === 'issuer-pending';
+}
 
 // The portal's own writes that may still grant membership after `removals`.
 function stillHolding(trustWrites: TrustWrite[], removals: RegistryRemoval[]): TrustWrite[] {
@@ -95,7 +103,7 @@ class RegistrationService {
             if (trustWrites && !write) {
                 logger.info(`DID ${did} was never written to '${registry}' by the portal, not removing it`);
             }
-            if (outcome === 'failed' || (outcome === 'not-found' && write && !write.alreadyRegistered)) {
+            if ((outcome !== null && UNSETTLED_OUTCOMES.has(outcome)) || (outcome === 'not-found' && write && !write.alreadyRegistered)) {
                 logger.warn(`Removal of DID ${did} from '${registry}' ended ${outcome}, it may still be trusted there`);
             }
         }
@@ -107,7 +115,7 @@ class RegistrationService {
             // Unrecorded writes were removed unscoped, so a failed one is kept as such: deleting the registration
             // then reports it instead of dropping the last record of it.
             return removals
-                .filter(({ outcome }) => outcome === 'failed')
+                .filter(({ outcome }) => outcome !== null && UNSETTLED_OUTCOMES.has(outcome))
                 .map(({ registry }) => ({ registry, scope: null }));
         }
         return stillHolding(trustWrites, removals);
@@ -129,12 +137,17 @@ class RegistrationService {
         return [...remaining, ...unscoped];
     }
 
+    // Every path that removes TIR trust goes through here, so each revoked membership is announced; an
+    // `issuer-pending` removal is announced again when its leftover retry deletes the issuer.
     private async removeTrust(did: string, trustWrites: TrustWrite[] | null): Promise<RegistryRemoval[]> {
-        const [tirRemoval, tilRemovals] = await Promise.all([
+        const [tir, tils] = await Promise.all([
             tirService.deleteDid(did, trustWrites),
             tilService.deleteDid(did, trustWrites),
         ]);
-        return [tirRemoval, ...tilRemovals];
+        if (revokesMembership(tir.outcome)) {
+            await eventService.publishParticipantRemoved(did, tir.outcome);
+        }
+        return [tir, ...tils];
     }
 }
 
