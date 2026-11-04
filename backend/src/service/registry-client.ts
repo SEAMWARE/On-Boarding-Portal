@@ -34,9 +34,6 @@ export interface RegistryRemoval {
 export interface UnregisterOptions {
     // Scope the trust was written with; `null`/absent removes the whole issuer as before TIL-1.
     dataspaceId?: string | null;
-    // After a scoped removal, delete the issuer once it holds no credential. Set for the TIR, whose
-    // `/v4/issuers/{did}` answers 200 for any listed issuer, so an empty one would stay trusted.
-    removeEmptyIssuer?: boolean;
 }
 
 export interface RegisterOptions {
@@ -107,13 +104,13 @@ export async function registerIssuer(
 }
 
 /**
- * Removes the issuer's trust. With `dataspaceId` only that membership grant is revoked; the issuer is
- * kept (TIL-1 exposes no scopes that could prove nobody else trusts it) unless `removeEmptyIssuer`.
+ * Removes the issuer's trust. With `dataspaceId` only that membership grant is revoked, and the issuer is
+ * deleted once it holds no credential: the TIR lists it as a member and VCVerifier <5 trusts it for any type.
  */
 export async function unregisterIssuer(
     url: URL,
     did: string,
-    { dataspaceId, removeEmptyIssuer }: UnregisterOptions = {},
+    { dataspaceId }: UnregisterOptions = {},
 ): Promise<RemovalOutcome> {
     if (dataspaceId) {
         logger.info(`Revoke membership of ${dataspaceId} from DID ${did} in ${url}`)
@@ -121,11 +118,7 @@ export async function unregisterIssuer(
         const response = await send(scopedUrl, 'DELETE');
         if (response.ok) {
             await discard(response);
-            if (removeEmptyIssuer) {
-                return removeIssuerIfEmpty(url, did);
-            }
-            logger.info(`Kept issuer ${did} in ${url}: other grants or direct registrations may still trust it`);
-            return 'scope-removed';
+            return removeIssuerIfEmpty(url, did);
         }
         const failure = await classifyScopedDeleteFailure(url, did, response.status);
         if (failure === 'failed') {
@@ -149,21 +142,19 @@ export async function removeRecordedTrust(
     url: URL,
     did: string,
     trustWrites: TrustWrite[] | null,
-    { removeEmptyIssuer }: Pick<UnregisterOptions, 'removeEmptyIssuer'> = {},
 ): Promise<RemovalOutcome | null> {
     if (trustWrites === null) {
         return unregisterIssuer(url, did);
     }
     const write = trustWrites.find(({ registry }) => registry === url.toString());
     if (!write) {
-        logger.info(`DID ${did} was never written to '${url}' by the portal, not removing it`);
         return null;
     }
     if (write.alreadyRegistered) {
         logger.warn(`DID ${did} was already registered in '${url}' before its approval, not removing it; remove it manually if it is the portal's leftover`);
         return null;
     }
-    return unregisterIssuer(url, did, { dataspaceId: write.scope, removeEmptyIssuer });
+    return unregisterIssuer(url, did, { dataspaceId: write.scope });
 }
 
 /** The legacy whole-issuer DELETE, byte-identical to the request before TIL-1. */

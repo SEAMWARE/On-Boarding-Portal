@@ -27,11 +27,11 @@ export class TirService {
         }
     }
 
-    /** Removes the recorded trust and an issuer left empty, as TIR membership is presence; errors become `failed`. */
+    /** Removes the trust recorded in `trustWrites`; a thrown error becomes `failed`. */
     async deleteDid(did: string, trustWrites: TrustWrite[] | null): Promise<RegistryRemoval> {
         const registry = this.tirUrl.toString();
         try {
-            return { registry, outcome: await removeRecordedTrust(this.tirUrl, did, trustWrites, { removeEmptyIssuer: true }) };
+            return { registry, outcome: await removeRecordedTrust(this.tirUrl, did, trustWrites) };
         } catch (error) {
             logger.error("Error removing did from TIR", error);
             return { registry, outcome: 'failed' };

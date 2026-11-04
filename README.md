@@ -397,16 +397,17 @@ recorded in `registration.trustWrites` (not from the current config, so changing
 later does not strand earlier participants):
 
 - **Written with a scope:** only that data space's membership grant is revoked
-  (`DELETE <url>/<did>/credential?scope=<id>&scopeType=dataspace-membership`). On a **TIL** the
-  issuer itself is kept: a TIL-1 registry never deletes it as a side effect and does not expose
-  the remaining scopes, so order-granted and differently-scoped trust (including another party's
-  `credentials: []` entry) survives. On the **TIR** the portal then reads the issuer and deletes it
-  when no credential is left, because the trusted-participant check (`GET /v4/issuers/<did>`)
-  answers `200` for any listed issuer and an empty one would stay a member. This drops another
-  party's unscoped `credentials: []` TIR entry for the same DID, and a credential written between
-  the read and the delete is lost (TIL-1 has no conditional delete). A registry without the scoped
-  route (`405`/`501`, or `404` while `GET <url>/<did>` finds the issuer) falls back to deleting the
-  whole issuer and logs a warning.
+  (`DELETE <url>/<did>/credential?scope=<id>&scopeType=dataspace-membership`). TIL-1 keeps the
+  issuer even when that grant was its last credential, so the portal then reads the issuer and
+  deletes it when no credential is left, on the TIR and on every TIL. An issuer that still holds
+  credentials (order-granted or another data space's grants) is kept. An empty issuer would still
+  grant trust: the TIR's trusted-participant check (`GET /v4/issuers/<did>`) answers `200` for any
+  listed issuer, and FIWARE VCVerifier before 5.0.0 does not check credential types on a TIL, so
+  an issuer without credentials is trusted for every type there (5.0.0 and later trust it for
+  none). Accepted costs: another party's unscoped `credentials: []` entry for the same DID is
+  dropped too, and a credential written between the read and the delete is lost (TIL-1 has no
+  conditional delete). A registry without the scoped route (`405`/`501`, or `404` while
+  `GET <url>/<did>` finds the issuer) falls back to deleting the whole issuer and logs a warning.
 - **Written unscoped, or approved before `trustWrites` existed:** the whole issuer is deleted
   (`DELETE <url>/<did>`), as before. TIL-1 scoped calls never touch such untyped entries.
 - **Already registered before the approval, or never written by the portal:** nothing is

@@ -149,6 +149,19 @@ describe("RegistrationService.unregister", () => {
         warned.forEach((registry) => expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining(registry)));
     });
 
+    it.each<[string, TrustWrite[] | null, boolean]>([
+        ["a configured registry missing from the record", [TIR_WRITE], true],
+        ["nothing for a recorded registry", [TIR_WRITE, SCOPED_TIL_WRITE], false],
+        ["nothing for unrecorded trust writes", null, false],
+    ])("logs %s as never written", async (_, trustWrites, logged) => {
+        arrangeRemovals(removal(TIR_WRITE, "scope-removed"), removal(SCOPED_TIL_WRITE, trustWrites ? null : "scope-removed"));
+
+        await registrationService.unregister({ did: DID, trustWrites } as Registration);
+
+        expect(vi.mocked(logger.info).mock.calls.some(([message]) => String(message).includes(`never written to '${SCOPED_TIL_WRITE.registry}'`)))
+            .toBe(logged);
+    });
+
     it.each<[string, TrustWrite[] | null, RegistryRemoval[], TrustWrite[] | null]>([
         ["nothing for removed or missing entries", [TIR_WRITE, SCOPED_TIL_WRITE, LEGACY_TIL_WRITE],
             [removal(SCOPED_TIL_WRITE, "scope-removed"), removal(LEGACY_TIL_WRITE, "not-found")], []],
@@ -165,6 +178,8 @@ describe("RegistrationService.unregister", () => {
 });
 
 describe("RegistrationService.removeLeftovers", () => {
+    const UNCONFIGURED_WRITE: TrustWrite = { registry: "http://gone.example/issuer", scope: "did:web:dataspace.example" };
+
     it.each<[string, TrustWrite[] | null, TrustWrite[] | null, TrustWrite[]]>([
         ["nothing without a record", null, null, []],
         ["nothing for entries the portal did not write", [EXISTING_TIL_WRITE], null, []],
@@ -173,6 +188,8 @@ describe("RegistrationService.removeLeftovers", () => {
         // Removing an unscoped leftover deletes the whole issuer, which may by now be another party's.
         ["only the scoped leftovers and also returns the unscoped ones",
             [SCOPED_TIL_WRITE, LEGACY_TIL_WRITE, EXISTING_TIL_WRITE], [SCOPED_TIL_WRITE], [SCOPED_TIL_WRITE, LEGACY_TIL_WRITE]],
+        ["a leftover on a registry no longer configured and returns it", [UNCONFIGURED_WRITE],
+            [UNCONFIGURED_WRITE], [UNCONFIGURED_WRITE]],
     ])("retries %s", async (_, trustWrites, retried, expected) => {
         vi.mocked(tirService.deleteDid).mockResolvedValue({ registry: TIR_WRITE.registry, outcome: "scope-removed" });
         vi.mocked(tilService.deleteDid).mockResolvedValue([{ registry: SCOPED_TIL_WRITE.registry, outcome: "failed" }]);
@@ -181,6 +198,9 @@ describe("RegistrationService.removeLeftovers", () => {
             .resolves.toEqual(expected);
 
         expect(keycloakService.removeRealm).not.toHaveBeenCalled();
+        // The caller reports what remains in one line; registries without a leftover are not "never written".
+        expect(logger.warn).not.toHaveBeenCalled();
+        expect(logger.info).not.toHaveBeenCalled();
         if (retried) {
             expect(tirService.deleteDid).toHaveBeenCalledWith(DID, retried);
             expect(tilService.deleteDid).toHaveBeenCalledWith(DID, retried);

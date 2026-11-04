@@ -192,8 +192,6 @@ describe("unregisterIssuer", () => {
     });
 
     it.each<[string, number[], RemovalOutcome, FetchCall[], boolean]>([
-        // TIL-1 keeps the issuer, which may still hold another party's grant or a direct `credentials: []` entry.
-        ["scope revoked, issuer kept", [204], "scope-removed", [SCOPED_DELETE], false],
         ["405 falls back to the legacy DELETE", [405, 204], "issuer-removed", [SCOPED_DELETE, LEGACY_DELETE], true],
         ["501 falls back to the legacy DELETE", [501, 204], "issuer-removed", [SCOPED_DELETE, LEGACY_DELETE], true],
         ["fallback on a missing issuer", [405, 404], "not-found", [SCOPED_DELETE, LEGACY_DELETE], true],
@@ -229,13 +227,10 @@ describe("unregisterIssuer", () => {
             "failed", [SCOPED_DELETE, ISSUER_GET], true],
         ["fails when the empty issuer cannot be deleted", () => { respondWith(204); respondWithIssuer([]); respondWith(500); },
             "failed", [SCOPED_DELETE, ISSUER_GET, LEGACY_DELETE], false],
-        ["still falls back on an unsupported registry", () => respondWith(405, 204),
-            "issuer-removed", [SCOPED_DELETE, LEGACY_DELETE], true],
-    ])("scoped removal with removeEmptyIssuer %s", async (_, arrange, expected, calls, warns) => {
+    ])("scoped removal %s", async (_, arrange, expected, calls, warns) => {
         arrange();
 
-        await expect(unregisterIssuer(REGISTRY_URL, DID, { dataspaceId: DATASPACE_ID, removeEmptyIssuer: true }))
-            .resolves.toBe(expected);
+        await expect(unregisterIssuer(REGISTRY_URL, DID, { dataspaceId: DATASPACE_ID })).resolves.toBe(expected);
 
         expect(fetchCalls()).toEqual(calls);
         expect(logger.warn).toHaveBeenCalledTimes(warns ? 1 : 0);
@@ -262,11 +257,11 @@ describe("removeRecordedTrust", () => {
         ["was written with a scope", [{ registry: REGISTRY, scope: RECORDED_SCOPE }],
             withScope(new URL(`${REGISTRY_URL}/${DID}/credential`), RECORDED_SCOPE).toString()],
     ])("removes an entry that %s the way it was written", async (_, trustWrites, url) => {
-        respondWith(204);
+        // A scoped removal then finds the issuer gone; an unscoped one stops after the DELETE.
+        respondWith(204, 404);
 
-        await expect(removeRecordedTrust(REGISTRY_URL, DID, trustWrites)).resolves.not.toBeNull();
+        await expect(removeRecordedTrust(REGISTRY_URL, DID, trustWrites)).resolves.toBe("issuer-removed");
 
-        expect(fetchMock).toHaveBeenCalledOnce();
         expect(String(fetchMock.mock.calls[0][0])).toBe(url);
         expect(fetchMock.mock.calls[0][1]?.method).toBe("DELETE");
     });

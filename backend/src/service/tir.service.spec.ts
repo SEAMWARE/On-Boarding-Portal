@@ -62,7 +62,6 @@ describe("TirService", () => {
         await expect(new TirService({ url: "http://tir.example" }).deleteDid(ISSUER.did, trustWrites))
             .resolves.toEqual({ registry: "http://tir.example/issuer", outcome });
 
-        expect(removeMock).toHaveBeenCalledWith(new URL("http://tir.example/issuer"), ISSUER.did, trustWrites,
-            { removeEmptyIssuer: true });
+        expect(removeMock).toHaveBeenCalledWith(new URL("http://tir.example/issuer"), ISSUER.did, trustWrites);
     });
 });

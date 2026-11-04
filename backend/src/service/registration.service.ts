@@ -3,12 +3,20 @@ import { TrusterIssuer } from "../type/truster-issuer";
 import { TrustWrite } from "../type/trust-write";
 import { keycloakService } from "./keycloak.service";
 import { logger } from "./logger";
-import { RemovalOutcome } from "./registry-client";
+import { RegistryRemoval, RemovalOutcome } from "./registry-client";
 import { tirService } from "./tir.service";
 import { tilService } from "./til.service";
 
 // Outcomes after which the recorded write no longer grants membership in that registry.
 const SETTLED_OUTCOMES: ReadonlySet<RemovalOutcome> = new Set(['issuer-removed', 'scope-removed', 'not-found']);
+
+// The portal's own writes that may still grant membership after `removals`.
+function stillHolding(trustWrites: TrustWrite[], removals: RegistryRemoval[]): TrustWrite[] {
+    const settled = new Set(removals
+        .filter(({ outcome }) => outcome !== null && SETTLED_OUTCOMES.has(outcome))
+        .map(({ registry }) => registry));
+    return trustWrites.filter(({ registry, alreadyRegistered }) => !alreadyRegistered && !settled.has(registry));
+}
 
 /**
  * Keeps earlier writes to registries not written this time, and the portal's own scoped leftover (left by a
@@ -93,14 +101,13 @@ class RegistrationService {
         if (trustWrites === null) {
             logger.info(`DID ${did} was approved before trust writes were recorded, removing it unscoped`);
         }
-        const [tirRemoval, tilRemovals] = await Promise.all([
-            tirService.deleteDid(did, trustWrites),
-            tilService.deleteDid(did, trustWrites),
-        ]);
-        const removals = [tirRemoval, ...tilRemovals];
+        const removals = await this.removeTrust(did, trustWrites);
         for (const { registry, outcome } of removals) {
-            const written = trustWrites?.some((write) => write.registry === registry && !write.alreadyRegistered);
-            if (outcome === 'failed' || (outcome === 'not-found' && written)) {
+            const write = trustWrites?.find((recorded) => recorded.registry === registry);
+            if (trustWrites && !write) {
+                logger.info(`DID ${did} was never written to '${registry}' by the portal, not removing it`);
+            }
+            if (outcome === 'failed' || (outcome === 'not-found' && write && !write.alreadyRegistered)) {
                 logger.warn(`Removal of DID ${did} from '${registry}' ended ${outcome}, it may still be trusted there`);
             }
         }
@@ -108,24 +115,30 @@ class RegistrationService {
         trustWrites?.filter(({ registry }) => !configured.has(registry)).forEach((write) => {
             logger.warn(`DID ${did} was written to '${write.registry}' (scope ${write.scope}), which is no longer configured; it may still be trusted there`);
         });
-        const settled = new Set(removals
-            .filter(({ outcome }) => outcome !== null && SETTLED_OUTCOMES.has(outcome))
-            .map(({ registry }) => registry));
-        return trustWrites && trustWrites.filter(({ registry, alreadyRegistered }) => !alreadyRegistered && !settled.has(registry));
+        return trustWrites && stillHolding(trustWrites, removals);
     }
 
     /**
      * Retries the removal of the scoped leftovers a deactivation recorded in `registration.trustWrites`; returns
-     * every leftover that may still hold. Unscoped ones are not retried: by now the whole issuer may be another party's.
+     * every leftover that may still hold, unlogged, for the caller to report once. Unscoped ones are not retried:
+     * by now the whole issuer may be another party's.
      */
     async removeLeftovers(registration: Registration): Promise<TrustWrite[]> {
         const leftovers = (registration.trustWrites ?? []).filter(({ alreadyRegistered }) => !alreadyRegistered);
         const scoped = leftovers.filter(({ scope }) => scope !== null);
         const unscoped = leftovers.filter(({ scope }) => scope === null);
         const remaining = scoped.length
-            ? await this.unregister({ ...registration, trustWrites: scoped } as Registration)
+            ? stillHolding(scoped, await this.removeTrust(registration.did, scoped))
             : [];
-        return [...(remaining ?? []), ...unscoped];
+        return [...remaining, ...unscoped];
+    }
+
+    private async removeTrust(did: string, trustWrites: TrustWrite[] | null): Promise<RegistryRemoval[]> {
+        const [tirRemoval, tilRemovals] = await Promise.all([
+            tirService.deleteDid(did, trustWrites),
+            tilService.deleteDid(did, trustWrites),
+        ]);
+        return [tirRemoval, ...tilRemovals];
     }
 }
 
