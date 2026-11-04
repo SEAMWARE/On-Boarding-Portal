@@ -414,14 +414,17 @@ later does not strand earlier participants):
 - A registry that was written but is no longer configured, a failed removal, or `not-found` on a
   registry the portal wrote are logged as warnings: the participant may still be trusted there.
 
-Entries that were removed are dropped from `trustWrites` on deactivation; the rest (failed
-removals, entries the portal did not write) stay recorded. Deleting a deactivated registration
-retries the removal of these leftovers (the realm is already gone) and logs a warning for any that
-still remain, since the deletion drops the last record of them. A re-approval keeps a scoped
-leftover instead of marking the registry as "already registered", so a later removal still deletes
-that grant. An unscoped leftover is not kept: removing it deletes the whole issuer, which may by
-then be another party's (the leftover was cleaned up by hand and the DID registered again). The
-registry is recorded as "already registered" and a warning asks for a manual check.
+On deactivation `trustWrites` keeps only the portal's own writes that may still hold (failed
+removals, registries no longer configured); removed entries and entries the portal did not write
+are dropped. Deleting a deactivated registration retries the removal of the scoped leftovers (the
+realm is already gone) and logs a warning for every leftover that still remains, since the deletion
+drops the last record of them. Unscoped leftovers are only logged, not retried: removing one
+deletes the whole issuer, which may by then be another party's (the leftover was cleaned up by hand
+and the DID registered again). For the same reason a re-approval keeps a scoped leftover instead of
+marking the registry as "already registered", so a later removal still deletes that grant, but
+records an unscoped one as "already registered" and warns. If the re-approval writes the registry
+under a different scope (`dataspaceId` changed or set since), the leftover drops out of the record
+and a warning asks for its manual removal.
 
 Existing participants are not re-registered with the scope (no backfill). A registry that ignored
 `scopeType` when the participant was written (the pre-TIL-1 fork) stores an untyped grant; if it is

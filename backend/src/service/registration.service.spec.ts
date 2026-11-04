@@ -55,7 +55,12 @@ describe("RegistrationService.register", () => {
         ["keeps an already-registered entry over the portal's unscoped leftover and warns",
             [LEGACY_TIL_WRITE], [conflictOn(LEGACY_TIL_WRITE)], [TIR_WRITE, conflictOn(LEGACY_TIL_WRITE)], true],
         ["keeps an earlier write to a registry not written now", [SCOPED_TIL_WRITE], [], [TIR_WRITE, SCOPED_TIL_WRITE], false],
-        ["prefers the new write", [{ ...SCOPED_TIL_WRITE, scope: null }], [SCOPED_TIL_WRITE], [TIR_WRITE, SCOPED_TIL_WRITE], false],
+        ["prefers the new write with the same scope", [SCOPED_TIL_WRITE], [SCOPED_TIL_WRITE], [TIR_WRITE, SCOPED_TIL_WRITE], false],
+        // The record holds one write per registry, so a leftover under another scope is no longer recorded.
+        ["prefers the new write and warns about an unscoped leftover", [{ ...SCOPED_TIL_WRITE, scope: null }],
+            [SCOPED_TIL_WRITE], [TIR_WRITE, SCOPED_TIL_WRITE], true],
+        ["prefers the new write and warns about a leftover with another scope",
+            [{ ...SCOPED_TIL_WRITE, scope: "did:web:other.example" }], [SCOPED_TIL_WRITE], [TIR_WRITE, SCOPED_TIL_WRITE], true],
         ["keeps an already-registered entry without a leftover", [EXISTING_TIL_WRITE], [EXISTING_TIL_WRITE],
             [TIR_WRITE, EXISTING_TIL_WRITE], false],
     ])("on re-approval %s", async (_, previous, tilWrites, expected, warns) => {
@@ -148,13 +153,40 @@ describe("RegistrationService.unregister", () => {
         ["nothing for removed or missing entries", [TIR_WRITE, SCOPED_TIL_WRITE, LEGACY_TIL_WRITE],
             [removal(SCOPED_TIL_WRITE, "scope-removed"), removal(LEGACY_TIL_WRITE, "not-found")], []],
         ["a failed removal", [TIR_WRITE, SCOPED_TIL_WRITE], [removal(SCOPED_TIL_WRITE, "failed")], [SCOPED_TIL_WRITE]],
-        ["an entry it did not remove", [TIR_WRITE, EXISTING_TIL_WRITE], [removal(EXISTING_TIL_WRITE, null)],
-            [EXISTING_TIL_WRITE]],
+        ["nothing for an entry the portal did not write", [TIR_WRITE, EXISTING_TIL_WRITE],
+            [removal(EXISTING_TIL_WRITE, null)], []],
         ["an unconfigured registry", [TIR_WRITE, LEGACY_TIL_WRITE], [], [LEGACY_TIL_WRITE]],
         ["null for unrecorded trust writes", null, [removal(SCOPED_TIL_WRITE, "issuer-removed")], null],
     ])("returns %s as still holding", async (_, trustWrites, tilRemovals, expected) => {
         arrangeRemovals(removal(TIR_WRITE, "issuer-removed"), ...tilRemovals);
 
         await expect(registrationService.unregister({ did: DID, trustWrites } as Registration)).resolves.toEqual(expected);
+    });
+});
+
+describe("RegistrationService.removeLeftovers", () => {
+    it.each<[string, TrustWrite[] | null, TrustWrite[] | null, TrustWrite[]]>([
+        ["nothing without a record", null, null, []],
+        ["nothing for entries the portal did not write", [EXISTING_TIL_WRITE], null, []],
+        ["a scoped leftover and returns it when it still holds", [TIR_WRITE, SCOPED_TIL_WRITE],
+            [TIR_WRITE, SCOPED_TIL_WRITE], [SCOPED_TIL_WRITE]],
+        // Removing an unscoped leftover deletes the whole issuer, which may by now be another party's.
+        ["only the scoped leftovers and also returns the unscoped ones",
+            [SCOPED_TIL_WRITE, LEGACY_TIL_WRITE, EXISTING_TIL_WRITE], [SCOPED_TIL_WRITE], [SCOPED_TIL_WRITE, LEGACY_TIL_WRITE]],
+    ])("retries %s", async (_, trustWrites, retried, expected) => {
+        vi.mocked(tirService.deleteDid).mockResolvedValue({ registry: TIR_WRITE.registry, outcome: "scope-removed" });
+        vi.mocked(tilService.deleteDid).mockResolvedValue([{ registry: SCOPED_TIL_WRITE.registry, outcome: "failed" }]);
+
+        await expect(registrationService.removeLeftovers({ did: DID, trustWrites } as Registration))
+            .resolves.toEqual(expected);
+
+        expect(keycloakService.removeRealm).not.toHaveBeenCalled();
+        if (retried) {
+            expect(tirService.deleteDid).toHaveBeenCalledWith(DID, retried);
+            expect(tilService.deleteDid).toHaveBeenCalledWith(DID, retried);
+        } else {
+            expect(tirService.deleteDid).not.toHaveBeenCalled();
+            expect(tilService.deleteDid).not.toHaveBeenCalled();
+        }
     });
 });

@@ -10,7 +10,6 @@ import { logger } from "../service/logger";
 import { registrationService } from "../service/registration.service";
 import { MailContext } from "../type/main-context";
 import { keycloakService } from "../service/keycloak.service";
-import { TrustWrite } from "../type/trust-write";
 
 const router = Router()
 
@@ -89,15 +88,12 @@ router.delete('/admin/registrations/:id', authFilter, async (req: Request, res: 
             });
         }
 
-        let remaining: TrustWrite[] | null = null;
-        if (registration.status === RegistrationStatus.ACTIVE) {
-            remaining = await registrationService.unregister(registration, registration.didGenerated);
-        } else if (registration.trustWrites?.length) {
-            // A deactivation left trust it could not remove; retry, since deleting drops the last record of it.
-            remaining = await registrationService.unregister(registration);
-        }
+        // Deleting drops the last record of trust a deactivation could not remove, so retry it first.
+        const remaining = registration.status === RegistrationStatus.ACTIVE
+            ? await registrationService.unregister(registration, registration.didGenerated)
+            : await registrationService.removeLeftovers(registration);
         if (remaining?.length) {
-            logger.warn(`Registration ${id} is deleted while its trust may still hold, remove manually: ${JSON.stringify(remaining)}`);
+            logger.warn(`Registration ${id} is deleted while its trust may still hold, check and remove it manually: ${JSON.stringify(remaining)}`);
         }
         await registrationRepository.delete(id, queryRunner);
         logger.info(`Registration ${id} deleted by admin.`);
