@@ -3,7 +3,7 @@ import { TrusterIssuer } from "../type/truster-issuer";
 import { TrustWrite } from "../type/trust-write";
 import { configService } from "./config.service";
 import { logger } from "./logger";
-import { AlreadyRegisteredError, normalizeIssuerUrl, registerIssuer, unregisterIssuer, validateRegistryConfig } from "./registry-client";
+import { AlreadyRegisteredError, normalizeIssuerUrl, registerIssuer, RegistryRemoval, RemovalOutcome, removeRecordedTrust, validateRegistryConfig } from "./registry-client";
 
 interface TilEntry {
     url: URL;
@@ -40,12 +40,15 @@ export class TilService {
         return writes.filter((write) => write !== null);
     }
 
-    async deleteDid(did: string): Promise<boolean[]> {
+    /** Removes the trust recorded in `trustWrites` from every TIL; a thrown error becomes `failed`. */
+    async deleteDid(did: string, trustWrites: TrustWrite[] | null): Promise<RegistryRemoval[]> {
         return Promise.all(this.tilEntries.map(({ url }) =>
-            unregisterIssuer(url, did).catch((error) => {
-                logger.warn(`Error removing did from TIL '${url}':`, error);
-                return false;
-            })
+            removeRecordedTrust(url, did, trustWrites)
+                .catch((error): RemovalOutcome => {
+                    logger.warn(`Error removing did from TIL '${url}':`, error);
+                    return 'failed';
+                })
+                .then((outcome) => ({ registry: url.toString(), outcome }))
         ));
     }
 }

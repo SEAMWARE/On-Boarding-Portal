@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { TrustWrite } from "../type/trust-write";
 import { TrusterIssuer } from "../type/truster-issuer";
 import { logger } from "./logger";
-import { AlreadyRegisteredError, normalizeIssuerUrl, registerIssuer, unregisterIssuer, validateRegistryConfig, withScope } from "./registry-client";
+import { AlreadyRegisteredError, normalizeIssuerUrl, registerIssuer, RemovalOutcome, removeRecordedTrust, unregisterIssuer, validateRegistryConfig, withScope } from "./registry-client";
 
 vi.mock("./logger", () => ({
     logger: { info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -18,6 +19,9 @@ const ISSUER_CREDENTIALS: TrusterIssuer["credentials"] = [{ credentialsType: "Me
 const OVERRIDE_CREDENTIALS: TrusterIssuer["credentials"] = [{ credentialsType: "OperatorCredential" }];
 
 const fetchMock = vi.fn<typeof fetch>();
+
+// [method, URL] of one registry request.
+type FetchCall = [string, string];
 
 function respondWith(...statuses: number[]): void {
     statuses.forEach((status) => fetchMock.mockResolvedValueOnce(new Response(null, { status })));
@@ -157,16 +161,84 @@ describe("validateRegistryConfig", () => {
 });
 
 describe("unregisterIssuer", () => {
+    const LEGACY_URL = `${REGISTRY_URL}/${DID}`;
+    const SCOPED_DELETE: FetchCall = ["DELETE", SCOPED_URL];
+    const ISSUER_GET: FetchCall = ["GET", LEGACY_URL];
+    const LEGACY_DELETE: FetchCall = ["DELETE", LEGACY_URL];
+
+    function fetchCalls(): FetchCall[] {
+        return fetchMock.mock.calls.map(([url, init]) => [init?.method ?? "GET", String(url)]);
+    }
+
     it.each([
-        [200, true],
-        [204, true],
-        [404, false],
-        [500, false],
-    ])("DELETEs the issuer and maps status %i to %s", async (status, expected) => {
+        [200, "issuer-removed"],
+        [204, "issuer-removed"],
+        [404, "not-found"],
+        [500, "failed"],
+    ])("DELETEs the whole issuer without a dataspaceId and maps status %i to %s", async (status, expected) => {
         respondWith(status);
 
         await expect(unregisterIssuer(REGISTRY_URL, DID)).resolves.toBe(expected);
 
-        expect(fetchMock).toHaveBeenCalledExactlyOnceWith(`${REGISTRY_URL}/${DID}`, { method: "DELETE" });
+        expect(fetchMock).toHaveBeenCalledExactlyOnceWith(LEGACY_URL, { method: "DELETE" });
+    });
+
+    it("treats a null dataspaceId as unscoped", async () => {
+        respondWith(204);
+
+        await expect(unregisterIssuer(REGISTRY_URL, DID, { dataspaceId: null })).resolves.toBe("issuer-removed");
+
+        expect(fetchCalls()).toEqual([LEGACY_DELETE]);
+    });
+
+    it.each<[string, number[], RemovalOutcome, FetchCall[], boolean]>([
+        // TIL-1 keeps the issuer, which may still hold another party's grant or a direct `credentials: []` entry.
+        ["scope revoked, issuer kept", [204], "scope-removed", [SCOPED_DELETE], false],
+        ["405 falls back to the legacy DELETE", [405, 204], "issuer-removed", [SCOPED_DELETE, LEGACY_DELETE], true],
+        ["501 falls back to the legacy DELETE", [501, 204], "issuer-removed", [SCOPED_DELETE, LEGACY_DELETE], true],
+        ["fallback on a missing issuer", [405, 404], "not-found", [SCOPED_DELETE, LEGACY_DELETE], true],
+        ["404 for a missing issuer", [404, 404], "not-found", [SCOPED_DELETE, ISSUER_GET], false],
+        ["404 for an existing issuer (pre-TIL-1 route)", [404, 200, 204], "issuer-removed",
+            [SCOPED_DELETE, ISSUER_GET, LEGACY_DELETE], true],
+        ["404 and the issuer lookup fails", [404, 500], "failed", [SCOPED_DELETE, ISSUER_GET], true],
+        ["400 never falls back", [400], "failed", [SCOPED_DELETE], true],
+        ["500 never falls back", [500], "failed", [SCOPED_DELETE], true],
+    ])("scoped removal: %s", async (_, statuses, expected, calls, warns) => {
+        respondWith(...statuses);
+
+        await expect(unregisterIssuer(REGISTRY_URL, DID, { dataspaceId: DATASPACE_ID })).resolves.toBe(expected);
+
+        expect(fetchCalls()).toEqual(calls);
+        expect(logger.warn).toHaveBeenCalledTimes(warns ? 1 : 0);
+    });
+});
+
+describe("removeRecordedTrust", () => {
+    const REGISTRY = REGISTRY_URL.toString();
+    const RECORDED_SCOPE = "did:web:former-dataspace.example";
+
+    it.each<[string, TrustWrite[] | null, string]>([
+        ["predates recorded trust writes", null, `${REGISTRY_URL}/${DID}`],
+        ["was written unscoped", [{ registry: REGISTRY, scope: null }], `${REGISTRY_URL}/${DID}`],
+        ["was written with a scope", [{ registry: REGISTRY, scope: RECORDED_SCOPE }],
+            withScope(new URL(`${REGISTRY_URL}/${DID}/credential`), RECORDED_SCOPE).toString()],
+    ])("removes an entry that %s the way it was written", async (_, trustWrites, url) => {
+        respondWith(204);
+
+        await expect(removeRecordedTrust(REGISTRY_URL, DID, trustWrites)).resolves.not.toBeNull();
+
+        expect(fetchMock).toHaveBeenCalledOnce();
+        expect(String(fetchMock.mock.calls[0][0])).toBe(url);
+        expect(fetchMock.mock.calls[0][1]?.method).toBe("DELETE");
+    });
+
+    it.each<[string, TrustWrite[], number]>([
+        ["the portal never wrote", [{ registry: "http://other.example/issuer", scope: null }], 0],
+        ["the registry held before the approval", [{ registry: REGISTRY, scope: null, alreadyRegistered: true }], 1],
+    ])("leaves an issuer %s untouched", async (_, trustWrites, warnings) => {
+        await expect(removeRecordedTrust(REGISTRY_URL, DID, trustWrites)).resolves.toBeNull();
+
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(logger.warn).toHaveBeenCalledTimes(warnings);
     });
 });

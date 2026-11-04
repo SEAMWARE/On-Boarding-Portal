@@ -90,7 +90,7 @@ router.delete('/admin/registrations/:id', authFilter, async (req: Request, res: 
         }
 
         if (registration.status === RegistrationStatus.ACTIVE) {
-            await registrationService.unregister(registration.did, registration.didGenerated);
+            await registrationService.unregister(registration, registration.didGenerated);
         }
         await registrationRepository.delete(id, queryRunner);
         logger.info(`Registration ${id} deleted by admin.`);
@@ -130,7 +130,7 @@ router.put('/admin/registrations/:id', authFilter, async (req: Request, res: Res
                 registration = (await registrationRepository.updateTrustWrites(registration.id, trustWrites, queryRunner))!;
             });
         } else if (prevRegistration.status === RegistrationStatus.ACTIVE && status !== RegistrationStatus.ACTIVE) {
-            await registrationService.unregister(registration.did, registration.didGenerated);
+            await registrationService.unregister(registration, registration.didGenerated);
         }
 
         await queryRunner.commitTransaction();

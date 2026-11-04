@@ -293,7 +293,8 @@ app:
   # `{ url, credentials?, dataspaceId? }`; `credentials` defaults to an empty list.
   # `dataspaceId` writes the trust as that data space's membership grant and then
   # requires non-empty `credentials`, which then also restrict the entry to the listed
-  # credential types, including in the unscoped fallback (see README).
+  # credential types, including in the unscoped fallback. Unregister removes each entry
+  # the way it was recorded on the registration: a scoped entry loses only its grant (see README).
   til: []
 email:
   enabled: false

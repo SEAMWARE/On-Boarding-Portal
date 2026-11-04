@@ -390,6 +390,28 @@ didGenerator:
   didWebHost: did:web:example.com    # Base domain for generated did:web identifiers
 ```
 
+#### Removing a participant
+
+Deactivating or deleting an active registration removes its trust the way it was written, as
+recorded in `registration.trustWrites` (not from the current config, so changing `dataspaceId`
+later does not strand earlier participants):
+
+- **Written with a scope:** only that data space's membership grant is revoked
+  (`DELETE <url>/<did>/credential?scope=<id>&scopeType=dataspace-membership`). The issuer itself
+  is kept: a TIL-1 registry never deletes it as a side effect and does not expose the remaining
+  scopes, so order-granted and differently-scoped trust (including another party's
+  `credentials: []` entry) survives. A registry without the scoped route (`405`/`501`, or `404`
+  while `GET <url>/<did>` finds the issuer) falls back to deleting the whole issuer and logs a
+  warning.
+- **Written unscoped, or approved before `trustWrites` existed:** the whole issuer is deleted
+  (`DELETE <url>/<did>`), as before. TIL-1 scoped calls never touch such untyped entries.
+- **Already registered before the approval, or never written by the portal:** nothing is
+  deleted; the first case logs a warning so an operator can clean up a leftover by hand.
+- A registry that was written but is no longer configured, a failed removal, or `not-found` on a
+  registry the portal wrote are logged as warnings: the participant may still be trusted there.
+
+Existing participants are not re-registered with the scope (no backfill).
+
 ### Environment variable substitution
 
 Any value in the YAML can reference an environment variable using `${VAR_NAME}`:

@@ -44,14 +44,31 @@ class RegistrationService {
             throw error;
         }
     }
-    async unregister(did: string, removeRealm: boolean = false) {
+    /** Removes the trust recorded in `registration.trustWrites`; outcomes that may leave it trusted are logged. */
+    async unregister(registration: Registration, removeRealm: boolean = false) {
+        const { did } = registration;
+        const trustWrites = registration.trustWrites ?? null;
         if (removeRealm) {
             await keycloakService.removeRealm(did);
         }
-        await Promise.all([
-            tirService.deleteDid(did),
-            tilService.deleteDid(did),
+        if (trustWrites === null) {
+            logger.info(`DID ${did} was approved before trust writes were recorded, removing it unscoped`);
+        }
+        const [tirRemoval, tilRemovals] = await Promise.all([
+            tirService.deleteDid(did, trustWrites),
+            tilService.deleteDid(did, trustWrites),
         ]);
+        const removals = [tirRemoval, ...tilRemovals];
+        for (const { registry, outcome } of removals) {
+            const written = trustWrites?.some((write) => write.registry === registry && !write.alreadyRegistered);
+            if (outcome === 'failed' || (outcome === 'not-found' && written)) {
+                logger.warn(`Removal of DID ${did} from '${registry}' ended ${outcome}, it may still be trusted there`);
+            }
+        }
+        const configured = new Set(removals.map(({ registry }) => registry));
+        trustWrites?.filter(({ registry }) => !configured.has(registry)).forEach((write) => {
+            logger.warn(`DID ${did} was written to '${write.registry}' (scope ${write.scope}), which is no longer configured; it may still be trusted there`);
+        });
     }
 }
 

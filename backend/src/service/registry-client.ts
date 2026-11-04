@@ -1,4 +1,5 @@
 import { RegistryConfig } from "../type/app-config";
+import { TrustWrite } from "../type/trust-write";
 import { IssuerCredentials, TrusterIssuer } from "../type/truster-issuer";
 import { externalRequest, logger } from "./logger";
 
@@ -10,11 +11,30 @@ const SCOPED_CREDENTIALS_PATH = 'credential';
 // A TIL-1 scoped PUT creates a missing issuer and never answers 404, so these statuses mean the
 // registry predates TIL-1 (unknown route) and the unscoped legacy POST is used instead.
 const SCOPED_WRITE_UNSUPPORTED_STATUSES: ReadonlySet<number> = new Set([404, 405, 501]);
+const STATUS_NOT_FOUND = 404;
+// Status codes a pre-TIL-1 registry may answer for the unknown scoped DELETE route. A 404 is
+// ambiguous (TIL-1 also uses it for a missing issuer) and is resolved by `classifyScopedDeleteFailure`.
+const SCOPED_DELETE_UNSUPPORTED_STATUSES: ReadonlySet<number> = new Set([405, 501]);
 // 409 is what TIL-1 answers for an existing issuer; 419 is kept for older registries.
 const ALREADY_REGISTERED_STATUSES: ReadonlySet<number> = new Set([409, 419]);
 
 /** The registry already holds an issuer with this DID, written by an earlier approval or another party. */
 export class AlreadyRegisteredError extends Error {}
+
+/** What a removal did: `scope-removed` keeps the issuer, `not-found` means the registry did not hold it. */
+export type RemovalOutcome = 'issuer-removed' | 'scope-removed' | 'not-found' | 'failed';
+
+/** Outcome of removing a participant from one registry; `outcome` is `null` when nothing was removed. */
+export interface RegistryRemoval {
+    // Normalized registry URL, comparable with `TrustWrite.registry`.
+    registry: string;
+    outcome: RemovalOutcome | null;
+}
+
+export interface UnregisterOptions {
+    // Scope the trust was written with; `null`/absent removes the whole issuer as before TIL-1.
+    dataspaceId?: string | null;
+}
 
 export interface RegisterOptions {
     credentials?: IssuerCredentials[];
@@ -81,25 +101,90 @@ export async function registerIssuer(
     return null;
 }
 
-export async function unregisterIssuer(url: URL, did: string): Promise<boolean> {
-    logger.info(`Unregister DID ${did} from ${url}`)
-
-    const start = process.hrtime();
-    const response = await fetch(`${url}/${did}`, {
-        method: 'DELETE',
-    });
-    externalRequest(response, url, 'DELETE', start);
-    if (!response.ok) {
-        logger.debug(`Error removing DID '${did}' from '${url}' ${response.status}: ${response.body}`)
-        return false;
+/**
+ * Removes the issuer's trust. With `dataspaceId` only that membership grant is revoked and the issuer
+ * is kept, because TIL-1 exposes no scopes that could prove nobody else still trusts it.
+ */
+export async function unregisterIssuer(
+    url: URL,
+    did: string,
+    { dataspaceId }: UnregisterOptions = {},
+): Promise<RemovalOutcome> {
+    if (dataspaceId) {
+        logger.info(`Revoke membership of ${dataspaceId} from DID ${did} in ${url}`)
+        const scopedUrl = withScope(new URL(`${url}/${did}/${SCOPED_CREDENTIALS_PATH}`), dataspaceId);
+        const response = await send(scopedUrl, 'DELETE');
+        if (response.ok) {
+            logger.info(`Kept issuer ${did} in ${url}: other grants or direct registrations may still trust it`);
+            return 'scope-removed';
+        }
+        const failure = await classifyScopedDeleteFailure(url, did, response.status);
+        if (failure !== 'unsupported') {
+            if (failure === 'failed') {
+                logger.warn(`Error revoking membership of DID '${did}' from '${url}' ${response.status}: ${await response.text()}`);
+            }
+            return failure;
+        }
+        logger.warn(`Registry '${url}' does not support scoped removal (${response.status}), removing DID ${did} unscoped`);
     }
 
-    return true;
+    logger.info(`Unregister DID ${did} from ${url}`)
+    const response = await send(`${url}/${did}`, 'DELETE');
+    if (response.ok) {
+        return 'issuer-removed';
+    }
+    logger.debug(`Error removing DID '${did}' from '${url}' ${response.status}: ${await response.text()}`)
+    return response.status === STATUS_NOT_FOUND ? 'not-found' : 'failed';
 }
 
-async function send(url: URL, method: string, body: unknown): Promise<Response> {
+/**
+ * Removes what the portal recorded writing to `url`, with the recorded scope rather than the configured
+ * one. `null` trustWrites (approved before they were recorded) remove unscoped. `null` = nothing removed.
+ */
+export async function removeRecordedTrust(
+    url: URL,
+    did: string,
+    trustWrites: TrustWrite[] | null,
+): Promise<RemovalOutcome | null> {
+    if (trustWrites === null) {
+        return unregisterIssuer(url, did);
+    }
+    const write = trustWrites.find(({ registry }) => registry === url.toString());
+    if (!write) {
+        logger.info(`DID ${did} was never written to '${url}' by the portal, not removing it`);
+        return null;
+    }
+    if (write.alreadyRegistered) {
+        logger.warn(`DID ${did} was already registered in '${url}' before its approval, not removing it; remove it manually if it is the portal's leftover`);
+        return null;
+    }
+    return unregisterIssuer(url, did, { dataspaceId: write.scope });
+}
+
+/** Decides whether a failed scoped DELETE may fall back to the destructive unscoped one. */
+async function classifyScopedDeleteFailure(
+    url: URL,
+    did: string,
+    status: number,
+): Promise<'unsupported' | 'not-found' | 'failed'> {
+    if (SCOPED_DELETE_UNSUPPORTED_STATUSES.has(status)) {
+        return 'unsupported';
+    }
+    if (status !== STATUS_NOT_FOUND) {
+        return 'failed';
+    }
+    // TIL-1 answers 404 only for a missing issuer, so an existing one means the route is unknown
+    // (pre-TIL-1). An issuer created between the two requests would be deleted whole; accepted race.
+    const response = await send(new URL(`${url}/${did}`), 'GET');
+    if (response.ok) {
+        return 'unsupported';
+    }
+    return response.status === STATUS_NOT_FOUND ? 'not-found' : 'failed';
+}
+
+async function send(url: URL | string, method: string, body?: unknown): Promise<Response> {
     const start = process.hrtime();
-    const response = await fetch(url, {
+    const response = await fetch(url, body === undefined ? { method } : {
         method,
         headers: {
             'Content-Type': 'application/json',

@@ -76,9 +76,19 @@ value of the TIL-1 `ScopeType` enum; any other value is rejected with `400`), in
 - **Q7:** unscoped credentials are never touched by the scoped PUT or DELETE; omitting `scopeType`
   addresses only untyped grants, never "any type". A scoped POST on an existing unscoped issuer
   answers `409` (not relevant any more, the portal uses the PUT).
-- **Q2/Q3 (preliminary, step 3 confirms):** the scoped DELETE answers `204`, `404` when the issuer
-  does not exist, `400` for a blank scope or unknown type. It deliberately keeps the issuer even when
-  no credential is left; there is no server-side orphan removal.
+- **Q2 (step 3, confirmed at `ticket-95/work` 2d4750c):** nobody. The scoped DELETE removes exactly
+  that (scope, scopeType) grant and deliberately keeps the issuer even when no credential is left,
+  "so that an issuer somebody else manages is not deleted as a side effect". With Q4 the client
+  cannot prove an issuer orphaned either, so the portal **never** deletes a scoped issuer whole
+  (the "Neither" branch: `logger.info`, return `scope-removed`).
+- **Q3 (step 3, confirmed):** `DELETE /issuer/{did}/credential?scope&scopeType` answers `204` on
+  success (also when no grant matched the scope), `400` (`ProblemDetails`) for a blank scope or an
+  unknown type, and `404` (`ProblemDetails`) **only** when the issuer does not exist. A TIL-1
+  registry therefore never answers `404` for an existing issuer, and no discriminator is needed:
+  scoped `404` + `GET /issuer/{did}` `200` means the route is unknown (pre-TIL-1) → warn and legacy
+  DELETE; `GET` `404` → `not-found`.
+- **Q4 (step 3, confirmed):** `GET /issuer/{did}` still returns `TrustedIssuer { did, credentials }`;
+  `Credentials` carries no scope, so the issuer's remaining scopes are not exposed.
 
 ## Steps
 
