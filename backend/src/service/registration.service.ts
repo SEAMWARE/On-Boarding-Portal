@@ -1,6 +1,7 @@
 import { Registration } from "../entity/registration.entity";
 import { TrusterIssuer } from "../type/truster-issuer";
 import { TrustWrite } from "../type/trust-write";
+import { eventService, MembershipRevocation } from "./event.service";
 import { keycloakService } from "./keycloak.service";
 import { logger } from "./logger";
 import { RegistryRemoval, RemovalOutcome } from "./registry-client";
@@ -9,6 +10,11 @@ import { tilService } from "./til.service";
 
 // Outcomes after which the recorded write no longer grants membership in that registry.
 const SETTLED_OUTCOMES: ReadonlySet<RemovalOutcome> = new Set(['issuer-removed', 'scope-removed', 'not-found']);
+
+// TIR outcomes that revoke the data space membership and are announced to the participants.
+function revokesMembership(outcome: RemovalOutcome | null): outcome is MembershipRevocation {
+    return outcome === 'issuer-removed' || outcome === 'scope-removed';
+}
 
 // The portal's own writes that may still grant membership after `removals`.
 function stillHolding(trustWrites: TrustWrite[], removals: RegistryRemoval[]): TrustWrite[] {
@@ -90,6 +96,10 @@ class RegistrationService {
             logger.info(`DID ${did} was approved before trust writes were recorded, removing it unscoped`);
         }
         const removals = await this.removeTrust(did, trustWrites);
+        const [{ outcome: tirOutcome }] = removals;
+        if (revokesMembership(tirOutcome)) {
+            await eventService.publishParticipantRemoved(did, tirOutcome);
+        }
         for (const { registry, outcome } of removals) {
             const write = trustWrites?.find((recorded) => recorded.registry === registry);
             if (trustWrites && !write) {

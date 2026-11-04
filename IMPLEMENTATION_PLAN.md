@@ -305,6 +305,12 @@ schema, event type name, and whether any auth is needed on the internal endpoint
 ticket/PR or `doc/eventing/architecture.md` in data-space-connector. If it is not available, write
 `completion-status.json` with `blocked` instead of guessing a payload.
 
+**Recorded CM-2 contract (from `contract-management@ticket-100/work`, `PublishEndpoint.java`):**
+`POST <management port 9090>/events`, unauthenticated (the management port is cluster-internal),
+JSON body `{ type, subject?, data?, id? }`; the publisher adds `source`, `dataspaceid`, `time` and
+the CloudEvents envelope and answers `202`. Type: `org.fiware.dataspace.participant.removed`, with
+the DID as `subject` and `data: { issuerRemoved }`.
+
 **Semantics:** the event means "membership of `did` in data space `app.tir.dataspaceId` was
 revoked by the portal". It fires when the TIR outcome is `scope-removed` **or** `issuer-removed`.
 A `scope-removed` removal can leave the issuer listed in the TIR with other trust, so the CM-4 TIR

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { Registration } from "../entity/registration.entity";
 import { TrustWrite } from "../type/trust-write";
 import { RegistryRemoval } from "./registry-client";
+import { eventService } from "./event.service";
 import { keycloakService } from "./keycloak.service";
 import { logger } from "./logger";
 import { registrationService } from "./registration.service";
@@ -12,6 +13,7 @@ vi.mock("./logger", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.f
 vi.mock("./keycloak.service", () => ({ keycloakService: { createRealm: vi.fn(), removeRealm: vi.fn() } }));
 vi.mock("./tir.service", () => ({ tirService: { registerDid: vi.fn(), deleteDid: vi.fn() } }));
 vi.mock("./til.service", () => ({ tilService: { registerDid: vi.fn(), deleteDid: vi.fn() } }));
+vi.mock("./event.service", () => ({ eventService: { publishParticipantRemoved: vi.fn() } }));
 
 const DID = "did:web:participant.example";
 const TIR_WRITE: TrustWrite = { registry: "http://tir.example/issuer", scope: "did:web:dataspace.example" };
@@ -160,6 +162,24 @@ describe("RegistrationService.unregister", () => {
 
         expect(vi.mocked(logger.info).mock.calls.some(([message]) => String(message).includes(`never written to '${SCOPED_TIL_WRITE.registry}'`)))
             .toBe(logged);
+    });
+
+    it.each<[RegistryRemoval["outcome"], RegistryRemoval["outcome"], boolean]>([
+        ["issuer-removed", "failed", true],
+        ["scope-removed", "not-found", true],
+        ["not-found", "scope-removed", false],
+        ["failed", "issuer-removed", false],
+        [null, "issuer-removed", false],
+    ])("announces the removal for TIR outcome %s (TIL %s): %s", async (tirOutcome, tilOutcome, published) => {
+        arrangeRemovals(removal(TIR_WRITE, tirOutcome), removal(SCOPED_TIL_WRITE, tilOutcome));
+
+        await registrationService.unregister({ did: DID, trustWrites: [TIR_WRITE, SCOPED_TIL_WRITE] } as Registration);
+
+        if (published) {
+            expect(eventService.publishParticipantRemoved).toHaveBeenCalledExactlyOnceWith(DID, tirOutcome);
+        } else {
+            expect(eventService.publishParticipantRemoved).not.toHaveBeenCalled();
+        }
     });
 
     it.each<[string, TrustWrite[] | null, RegistryRemoval[], TrustWrite[]]>([
