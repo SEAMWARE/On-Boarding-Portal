@@ -18,10 +18,7 @@ function stillHolding(trustWrites: TrustWrite[], removals: RegistryRemoval[]): T
     return trustWrites.filter(({ registry, alreadyRegistered }) => !alreadyRegistered && !settled.has(registry));
 }
 
-/**
- * Keeps earlier writes to registries not written this time, and the portal's own scoped leftover (left by a
- * failed removal) where the registry now reports the issuer as already registered. Warns about leftovers it drops.
- */
+/** Merges a re-approval's writes into the leftovers; claims only scoped leftovers, warns about dropped ones. */
 function mergeTrustWrites(did: string, previous: TrustWrite[], current: TrustWrite[]): TrustWrite[] {
     const merged = current.map((write) => {
         const leftover = previous.find(({ registry, alreadyRegistered }) => registry === write.registry && !alreadyRegistered);
@@ -29,15 +26,13 @@ function mergeTrustWrites(did: string, previous: TrustWrite[], current: TrustWri
             return write;
         }
         if (!write.alreadyRegistered) {
-            // The record holds one write per registry, so a leftover under another scope (dataspaceId changed or
-            // set since) drops out of it and a later removal would leave that grant in place.
+            // One write per registry: a leftover under another scope drops out of the record.
             if (leftover.scope !== write.scope) {
                 logger.warn(`DID ${did} may still hold the earlier grant (scope ${leftover.scope}) in '${write.registry}', which is no longer recorded after writing scope ${write.scope}; remove it manually`);
             }
             return write;
         }
-        // An unscoped leftover would be removed by deleting the whole issuer, which may by now be another
-        // party's (the leftover was cleaned up by hand and the DID registered again), so ownership is not claimed.
+        // Removing an unscoped leftover deletes the whole issuer, which may by now be another party's.
         if (leftover.scope === null) {
             logger.warn(`DID ${did} is already registered in '${write.registry}', which may be the portal's unscoped leftover; it will not be removed with the participant, remove it manually if it is`);
             return write;
@@ -50,10 +45,7 @@ function mergeTrustWrites(did: string, previous: TrustWrite[], current: TrustWri
 
 class RegistrationService {
 
-    /**
-     * Writes the trust and hands it, merged with the leftovers in `registration.trustWrites`, to
-     * `persistTrustWrites` inside the same rollback scope. Returns the persisted writes.
-     */
+    /** Writes the trust and persists it, merged with recorded leftovers, inside the same rollback scope. */
     async register(
         registration: Registration,
         persistTrustWrites: (trustWrites: TrustWrite[]) => Promise<void>,
@@ -87,11 +79,7 @@ class RegistrationService {
             throw error;
         }
     }
-    /**
-     * Removes the trust recorded in `registration.trustWrites`; outcomes that may leave it trusted are logged.
-     * Returns the portal's own writes that may still hold, for the caller to persist. A failed removal of
-     * unrecorded (`null`) writes is returned unscoped. `alreadyRegistered` entries are never returned.
-     */
+    /** Removes the recorded trust; returns the portal's own writes that may still hold (unrecorded ones unscoped). */
     async unregister(registration: Registration, removeRealm: boolean = false): Promise<TrustWrite[]> {
         const { did } = registration;
         const trustWrites = registration.trustWrites ?? null;
@@ -125,11 +113,7 @@ class RegistrationService {
         return stillHolding(trustWrites, removals);
     }
 
-    /**
-     * Retries the removal of the scoped leftovers a deactivation recorded in `registration.trustWrites`; returns
-     * every leftover that may still hold, unlogged, for the caller to report once. Unscoped ones are not retried:
-     * by now the whole issuer may be another party's.
-     */
+    /** Retries scoped leftovers only; returns every leftover that may still hold, unlogged, for the caller to report. */
     async removeLeftovers(registration: Registration): Promise<TrustWrite[]> {
         const leftovers = (registration.trustWrites ?? []).filter(({ alreadyRegistered }) => !alreadyRegistered);
         const scoped = leftovers.filter(({ scope }) => scope !== null);

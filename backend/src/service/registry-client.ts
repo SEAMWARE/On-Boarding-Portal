@@ -60,8 +60,8 @@ export function withScope(url: URL, dataspaceId: string): URL {
 }
 
 /**
- * Turns an unvalidated DID into one path segment, so `?`, `#`, `/` or dot segments cannot redirect the request
- * to another issuer. `:` stays literal, so a well-formed DID's URL is unchanged. Throws without the `did:` prefix.
+ * Turns an unvalidated DID into one path segment, so `?`, `#`, `/` or dot segments cannot reach another issuer.
+ * `:` stays literal; `%` becomes `%25`, as the TIL (Micronaut) URL-decodes path variables. Throws without `did:`.
  */
 export function didPathSegment(did: string): string {
     if (!did.startsWith(DID_PREFIX)) {
@@ -170,7 +170,7 @@ export async function removeRecordedTrust(
     return unregisterIssuer(url, did, { dataspaceId: write.scope });
 }
 
-/** The legacy whole-issuer DELETE, byte-identical to the request before TIL-1 for a well-formed DID. */
+/** The legacy whole-issuer DELETE; same request as before TIL-1 unless the DID contains a `%` (now `%25`). */
 async function deleteIssuer(url: URL, did: string): Promise<RemovalOutcome> {
     logger.info(`Unregister DID ${did} from ${url}`)
     const response = await send(`${url}/${didPathSegment(did)}`, 'DELETE');

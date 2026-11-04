@@ -135,6 +135,7 @@ describe("registerIssuer with dataspaceId", () => {
 describe("didPathSegment", () => {
     it.each([
         ["keeps a well-formed DID", DID, DID],
+        ["encodes the % of a did:web port so the decoded DID matches", "did:web:host%3A8443:realm", "did:web:host%253A8443:realm"],
         ["keeps colons and percent-encodes the rest", "did:web:a?x#y/z%3A", "did:web:a%3Fx%23y%2Fz%253A"],
         ["cannot form a dot segment", "did:x/../did:web:victim", "did:x%2F..%2Fdid:web:victim"],
     ])("%s", (_, did, expected) => {
