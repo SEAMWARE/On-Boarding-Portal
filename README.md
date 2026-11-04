@@ -320,7 +320,10 @@ app:
     # startup). Omit both to keep the legacy unscoped `POST <url>` with no credentials.
     # A registry without the scoped route (pre-TIL-1: 404/405/501) gets the legacy POST
     # and a warning is logged; one that ignores `scopeType` stores an untyped grant.
-    # The way each registry was written is stored on the registration for removal.
+    # The way each registry was written is stored on the registration for removal, in
+    # the nullable `simple-json` column `registration.trustWrites`. There are no
+    # migrations: with `database.synchronize: false`, add that column by hand before
+    # upgrading (e.g. PostgreSQL: `ALTER TABLE registration ADD COLUMN "trustWrites" text NULL;`).
     dataspaceId: <data-space-publisher-id>
     credentials:
       - credentialsType: MembershipCredential

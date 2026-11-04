@@ -51,8 +51,11 @@ export function validateRegistryConfig({ url, credentials, dataspaceId }: Regist
 export async function registerIssuer(
     url: URL,
     trusterIssuer: TrusterIssuer,
-    { credentials = trusterIssuer.credentials, dataspaceId }: RegisterOptions = {},
+    options: RegisterOptions = {},
 ): Promise<string | null> {
+    // `??`, not a destructuring default: an empty YAML `credentials:` key parses as `null`.
+    const credentials = options.credentials ?? trusterIssuer.credentials;
+    const { dataspaceId } = options;
     if (dataspaceId) {
         logger.info(`Grant DID ${trusterIssuer.did} membership of ${dataspaceId} in ${url}`)
         const scopedUrl = withScope(new URL(`${url}/${trusterIssuer.did}/${SCOPED_CREDENTIALS_PATH}`), dataspaceId);

@@ -50,6 +50,7 @@ describe("registerIssuer", () => {
 
     it.each([
         ["issuer credentials by default", undefined, ISSUER_CREDENTIALS],
+        ["issuer credentials for an empty YAML key", null as unknown as undefined, ISSUER_CREDENTIALS],
         ["explicit credentials override", OVERRIDE_CREDENTIALS, OVERRIDE_CREDENTIALS],
         ["explicit empty credentials", [], []],
     ])("POSTs the issuer with %s", async (_, credentials, expectedCredentials) => {
