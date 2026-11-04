@@ -292,7 +292,8 @@ app:
   # logged and does not affect the others or the TIR registration. Each entry is
   # `{ url, credentials?, dataspaceId? }`; `credentials` defaults to an empty list.
   # `dataspaceId` writes the trust as that data space's membership grant and then
-  # requires non-empty `credentials` (see README).
+  # requires non-empty `credentials`, which then also restrict the entry to the listed
+  # credential types, including in the unscoped fallback (see README).
   til: []
 email:
   enabled: false

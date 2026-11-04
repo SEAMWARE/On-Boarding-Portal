@@ -318,6 +318,11 @@ app:
     # which leaves order-granted and other data spaces' trust untouched. TIL-1 stores
     # the scope per credential, so `credentials` must then be non-empty (checked at
     # startup). Omit both to keep the legacy unscoped `POST <url>` with no credentials.
+    # Setting `credentials` also restricts the entry: the participant is stored with only
+    # the listed credential types (no longer the unrestricted `credentials: []`), on a
+    # TIL-1 registry and in the fallback POST alike. Verifiers that read the list as
+    # trusted-issuer config then accept only those types, so list every type the
+    # participant must stay trusted to issue.
     # A registry without the scoped route (pre-TIL-1: 404/405/501) gets the legacy POST
     # and a warning is logged; one that ignores `scopeType` stores an untyped grant.
     # The way each registry was written is stored on the registration for removal, in
