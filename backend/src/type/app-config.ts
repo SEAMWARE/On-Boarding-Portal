@@ -33,6 +33,9 @@ export interface Logging {
 export interface TilConfig {
     url: string;
     credentials?: IssuerCredentials[]
+    // Publisher id of the data space whose membership this entry represents; requires
+    // `credentials`. Unset keeps the unscoped (legacy) calls.
+    dataspaceId?: string;
 }
 export interface AppCfg {
     login: LoginConfig;
@@ -54,6 +57,10 @@ export interface LoginConfig {
 
 export interface TirConfig {
     url: string;
+    credentials?: IssuerCredentials[];
+    // Publisher id of the data space whose membership this entry represents; requires
+    // `credentials`. Unset keeps the unscoped (legacy) calls.
+    dataspaceId?: string;
 }
 
 export interface KeycloakConfig {

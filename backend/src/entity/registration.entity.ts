@@ -1,5 +1,6 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import { FileMetadata } from "../type/file-metadata";
+import { TrustWrite } from "../type/trust-write";
 import { configService } from "../service/config.service";
 import { keycloakService } from "../service/keycloak.service";
 
@@ -51,6 +52,10 @@ export class Registration {
     didGenerated!: boolean
     @Column({ nullable: true, type: 'text' })
     reason?: string;
+    // An array rather than a map keyed by URL: MongoDB field names must not contain dots.
+    // `null` means the registration was approved before trust writes were recorded.
+    @Column({ nullable: true, type: 'simple-json' })
+    trustWrites?: TrustWrite[] | null;
     @CreateDateColumn({ type: DATE_COLUMN_TYPE })
     createdAt?: Date;
 

@@ -3,6 +3,7 @@ import { Registration, RegistrationStatus } from "../entity/registration.entity"
 import { AppDataSource } from "../service/data.source";
 import { BaseRepository } from "./base.repository";
 import { storageService } from "../service/storage.service";
+import { TrustWrite } from "../type/trust-write";
 
 export type RegistrationUpdate = Partial<Pick<Registration, 'address' | 'city' | 'country' | 'did' | 'email' | 'name' | 'postCode' | 'taxId' | 'filesPath'>>
 
@@ -22,6 +23,10 @@ class RegistrationRepository extends BaseRepository<Registration> {
 
     async updateStatus(id: string, status: RegistrationStatus, reason: string, qr?: QueryRunner): Promise<Registration | null> {
         return super.update(id, { status, reason }, qr)
+    }
+
+    async updateTrustWrites(id: string, trustWrites: TrustWrite[], qr?: QueryRunner): Promise<Registration | null> {
+        return super.update(id, { trustWrites }, qr)
     }
 
     async updateInfo(id: string, data: RegistrationUpdate, qr?: QueryRunner): Promise<Registration | null> {
