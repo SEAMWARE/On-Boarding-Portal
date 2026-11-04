@@ -15,7 +15,9 @@ const STATUS_NOT_FOUND = 404;
 // Status codes a pre-TIL-1 registry may answer for the unknown scoped DELETE route. A 404 is
 // ambiguous (TIL-1 also uses it for a missing issuer) and is resolved by `classifyScopedDeleteFailure`.
 const SCOPED_DELETE_UNSUPPORTED_STATUSES: ReadonlySet<number> = new Set([405, 501]);
-const DID_PREFIX = 'did:';
+// Segments that are empty or that WHATWG URL resolves as dot segments, so they would address
+// another resource. `%2e` cannot reach the URL: `didPathSegment` encodes `%` first.
+const UNSAFE_PATH_SEGMENTS: ReadonlySet<string> = new Set(['', '.', '..']);
 const ENCODED_COLON = /%3A/gi;
 // 409 is what TIL-1 answers for an existing issuer; 419 is kept for older registries.
 const ALREADY_REGISTERED_STATUSES: ReadonlySet<number> = new Set([409, 419]);
@@ -59,15 +61,22 @@ export function withScope(url: URL, dataspaceId: string): URL {
     return scoped;
 }
 
-/**
- * Turns an unvalidated DID into one path segment, so `?`, `#`, `/` or dot segments cannot reach another issuer.
- * `:` stays literal; `%` becomes `%25`, as the TIL (Micronaut) URL-decodes path variables. Throws without `did:`.
- */
+/** Encodes an unvalidated DID as one path segment; `%` becomes `%25` as Micronaut decodes path variables. */
 export function didPathSegment(did: string): string {
-    if (!did.startsWith(DID_PREFIX)) {
-        throw new Error(`'${did}' is not a DID`);
+    if (UNSAFE_PATH_SEGMENTS.has(did)) {
+        throw new Error(`'${did}' cannot be addressed as an issuer`);
     }
     return encodeURIComponent(did).replace(ENCODED_COLON, ':');
+}
+
+// The issuer resource; every GET and DELETE of `did` must address it identically.
+function issuerUrl(url: URL, did: string): URL {
+    return new URL(`${url}/${didPathSegment(did)}`);
+}
+
+// The TIL-1 resource of `did`'s membership grant in `dataspaceId`.
+function scopedCredentialsUrl(url: URL, did: string, dataspaceId: string): URL {
+    return withScope(new URL(`${issuerUrl(url, did)}/${SCOPED_CREDENTIALS_PATH}`), dataspaceId);
 }
 
 /** Fails fast on a scoped entry without credentials: TIL-1 stores the scope per credential only. */
@@ -77,10 +86,7 @@ export function validateRegistryConfig({ url, credentials, dataspaceId }: Regist
     }
 }
 
-/**
- * Writes the issuer's trust and returns the scope it was written with, or `null` if unscoped.
- * With `dataspaceId` the credentials are granted through the idempotent TIL-1 scoped PUT.
- */
+/** Writes the issuer's trust; returns the scope written with, `null` if unscoped. */
 export async function registerIssuer(
     url: URL,
     trusterIssuer: TrusterIssuer,
@@ -89,10 +95,11 @@ export async function registerIssuer(
     // `??`, not a destructuring default: an empty YAML `credentials:` key parses as `null`.
     const credentials = options.credentials ?? trusterIssuer.credentials;
     const { dataspaceId } = options;
+    // Throws before writing an entry no removal could address.
+    issuerUrl(url, trusterIssuer.did);
     if (dataspaceId) {
         logger.info(`Grant DID ${trusterIssuer.did} membership of ${dataspaceId} in ${url}`)
-        const scopedUrl = withScope(new URL(`${url}/${didPathSegment(trusterIssuer.did)}/${SCOPED_CREDENTIALS_PATH}`), dataspaceId);
-        const response = await send(scopedUrl, 'PUT', credentials);
+        const response = await send(scopedCredentialsUrl(url, trusterIssuer.did, dataspaceId), 'PUT', credentials);
         await discard(response);
         if (response.ok) {
             return dataspaceId;
@@ -116,10 +123,7 @@ export async function registerIssuer(
     return null;
 }
 
-/**
- * Removes the issuer's trust. With `dataspaceId` only that membership grant is revoked, and the issuer is
- * deleted once it holds no credential: the TIR lists it as a member and VCVerifier <5 trusts it for any type.
- */
+/** Removes the issuer's trust; with `dataspaceId` only that grant, then the issuer once it holds no credential. */
 export async function unregisterIssuer(
     url: URL,
     did: string,
@@ -127,8 +131,7 @@ export async function unregisterIssuer(
 ): Promise<RemovalOutcome> {
     if (dataspaceId) {
         logger.info(`Revoke membership of ${dataspaceId} from DID ${did} in ${url}`)
-        const scopedUrl = withScope(new URL(`${url}/${didPathSegment(did)}/${SCOPED_CREDENTIALS_PATH}`), dataspaceId);
-        const response = await send(scopedUrl, 'DELETE');
+        const response = await send(scopedCredentialsUrl(url, did, dataspaceId), 'DELETE');
         if (response.ok) {
             await discard(response);
             return removeIssuerIfEmpty(url, did);
@@ -147,10 +150,7 @@ export async function unregisterIssuer(
     return deleteIssuer(url, did);
 }
 
-/**
- * Removes what the portal recorded writing to `url`, with the recorded scope rather than the configured
- * one. `null` trustWrites (approved before they were recorded) remove unscoped. `null` = nothing removed.
- */
+/** Removes what `trustWrites` records for `url` by its recorded scope (`null` list: unscoped); `null` = nothing removed. */
 export async function removeRecordedTrust(
     url: URL,
     did: string,
@@ -170,10 +170,10 @@ export async function removeRecordedTrust(
     return unregisterIssuer(url, did, { dataspaceId: write.scope });
 }
 
-/** The legacy whole-issuer DELETE; same request as before TIL-1 unless the DID contains a `%` (now `%25`). */
+// The legacy whole-issuer DELETE; same request as before TIL-1 unless the DID contains a `%` (now `%25`).
 async function deleteIssuer(url: URL, did: string): Promise<RemovalOutcome> {
     logger.info(`Unregister DID ${did} from ${url}`)
-    const response = await send(`${url}/${didPathSegment(did)}`, 'DELETE');
+    const response = await send(issuerUrl(url, did), 'DELETE');
     if (response.ok) {
         await discard(response);
         return 'issuer-removed';
@@ -182,12 +182,9 @@ async function deleteIssuer(url: URL, did: string): Promise<RemovalOutcome> {
     return response.status === STATUS_NOT_FOUND ? 'not-found' : 'failed';
 }
 
-/**
- * Deletes an issuer the scoped removal left without credentials; `failed` if it may still be listed.
- * TIL-1 has no conditional DELETE, so a credential another writer adds between GET and DELETE is lost.
- */
+// Deletes an issuer the scoped removal left without credentials; `failed` if it may still be listed.
 async function removeIssuerIfEmpty(url: URL, did: string): Promise<RemovalOutcome> {
-    const response = await send(new URL(`${url}/${didPathSegment(did)}`), 'GET');
+    const response = await send(issuerUrl(url, did), 'GET');
     if (response.status === STATUS_NOT_FOUND) {
         await discard(response);
         return 'issuer-removed';
@@ -202,12 +199,13 @@ async function removeIssuerIfEmpty(url: URL, did: string): Promise<RemovalOutcom
         return 'scope-removed';
     }
     logger.info(`Issuer ${did} holds no credentials in ${url} after revoking its membership, removing it`);
+    // TIL-1 has no conditional DELETE: a credential added since the GET is lost (accepted, see plan Q2).
     const outcome = await deleteIssuer(url, did);
     // Gone in between counts as removed: nothing is listed any more.
     return outcome === 'not-found' ? 'issuer-removed' : outcome;
 }
 
-/** Decides whether a failed scoped DELETE may fall back to the destructive unscoped one. */
+// Decides whether a failed scoped DELETE may fall back to the destructive unscoped one.
 async function classifyScopedDeleteFailure(
     url: URL,
     did: string,
@@ -221,7 +219,7 @@ async function classifyScopedDeleteFailure(
     }
     // TIL-1 answers 404 only for a missing issuer, so an existing one means the route is unknown
     // (pre-TIL-1). An issuer created between the two requests would be deleted whole; accepted race.
-    const response = await send(new URL(`${url}/${didPathSegment(did)}`), 'GET');
+    const response = await send(issuerUrl(url, did), 'GET');
     await discard(response);
     if (response.ok) {
         return 'unsupported';
@@ -234,7 +232,7 @@ async function discard(response: Response): Promise<void> {
     await response.body?.cancel();
 }
 
-async function send(url: URL | string, method: string, body?: unknown): Promise<Response> {
+async function send(url: URL, method: string, body?: unknown): Promise<Response> {
     const start = process.hrtime();
     const response = await fetch(url, body === undefined ? { method } : {
         method,

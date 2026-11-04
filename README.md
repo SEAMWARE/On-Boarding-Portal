@@ -392,39 +392,17 @@ didGenerator:
 
 #### Removing a participant
 
-Deactivating or deleting an active registration removes its trust the way it was written, as
-recorded in `registration.trustWrites` (not from the current config, so changing `dataspaceId`
-later does not strand earlier participants):
+Removal follows how each registry was written (`registration.trustWrites`), not the current config:
 
-- **Written with a scope:** only that data space's membership grant is revoked
-  (`DELETE <url>/<did>/credential?scope=<id>&scopeType=dataspace-membership`). TIL-1 keeps the
-  issuer even when that grant was its last credential, so the portal then reads the issuer and
-  deletes it when no credential is left, on the TIR and on every TIL. An issuer that still holds
-  credentials (order-granted or another data space's grants) is kept. An empty issuer would still
-  grant trust: the TIR's trusted-participant check (`GET /v4/issuers/<did>`) answers `200` for any
-  listed issuer, and FIWARE VCVerifier before 5.0.0 does not check credential types on a TIL, so
-  an issuer without credentials is trusted for every type there (5.0.0 and later trust it for
-  none). Accepted costs: another party's unscoped `credentials: []` entry for the same DID is
-  dropped too, and a credential written between the read and the delete is lost (TIL-1 has no
-  conditional delete). A registry without the scoped route (`405`/`501`, or `404` while
-  `GET <url>/<did>` finds the issuer) falls back to deleting the whole issuer and logs a warning.
-- **Written unscoped, or approved before `trustWrites` existed:** the whole issuer is deleted
-  (`DELETE <url>/<did>`), as before. TIL-1 scoped calls never touch such untyped entries.
-- **Already registered before the approval, or never written by the portal:** nothing is
-  deleted; the first case logs a warning so an operator can clean up a leftover by hand.
-- A registry that was written but is no longer configured, a failed removal, or `not-found` on a
-  registry the portal wrote are logged as warnings: the participant may still be trusted there.
+- **Scoped:** only the data space's membership grant is revoked; an issuer left with no credentials
+  is then deleted, one that still holds other grants is kept. A registry without the scoped route
+  falls back to deleting the whole issuer and logs a warning.
+- **Unscoped, or approved before `trustWrites` existed:** the whole issuer is deleted, as before.
+- **Already registered before the approval, or never written:** nothing is deleted.
 
-Removals that fail stay recorded in `trustWrites`. Deleting a deactivated registration retries
-the scoped ones and logs a warning for every write that may still hold, so an operator can remove
-it by hand. Unscoped leftovers are only logged, never retried: deleting the whole issuer could by
-then hit another party's entry.
-
-Existing participants are not re-registered with the scope (no backfill). A registry that ignored
-`scopeType` when the participant was written (the pre-TIL-1 fork) stores an untyped grant; if it is
-upgraded to TIL-1 before the removal, the typed scoped DELETE answers `204` without matching that
-grant and the participant stays trusted there without a warning. Remove such grants by hand after
-upgrading.
+Every write that may still hold (failed removal, registry no longer configured) is logged as a
+warning: check and remove it by hand. Deleting a deactivated registration retries scoped leftovers.
+After upgrading a pre-TIL-1 registry to TIL-1, remove the participants' untyped grants by hand.
 
 ### Environment variable substitution
 

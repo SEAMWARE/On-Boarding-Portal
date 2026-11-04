@@ -192,7 +192,11 @@ registry requests are byte-for-byte the same as before. `pnpm test` and `pnpm ex
 
 **Known gap:** a registry that has the PUT route but ignores `scopeType` (the fork's pre-TIL-1
 `main`) stores an untyped grant without a log line; neither response echoes the scope. The step-3
-scoped DELETE addresses that grant the same way, so removal stays consistent.
+scoped DELETE addresses that grant the same way, so removal stays consistent, unless the registry
+is upgraded to TIL-1 in between: the typed DELETE then answers `204` without matching the untyped
+grant, and the participant stays trusted there without a warning (README: remove by hand). Unscoped
+leftovers are never retried on registration delete, only logged: by then a whole-issuer DELETE may
+hit another party's entry.
 
 ### Step 3: Scoped unregistration — remove only the scoped trust, never another party's
 **First answer Q2–Q4** (see the TIL-1 contract section) and record them in the plan; block if they

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TrustWrite } from "../type/trust-write";
 import { TrusterIssuer } from "../type/truster-issuer";
 import { logger } from "./logger";
-import { AlreadyRegisteredError, didPathSegment, normalizeIssuerUrl, registerIssuer, RemovalOutcome, removeRecordedTrust, unregisterIssuer, validateRegistryConfig, withScope } from "./registry-client";
+import { AlreadyRegisteredError, didPathSegment, normalizeIssuerUrl, registerIssuer, RegisterOptions, RemovalOutcome, removeRecordedTrust, unregisterIssuer, validateRegistryConfig, withScope } from "./registry-client";
 
 vi.mock("./logger", () => ({
     logger: { info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -138,11 +138,13 @@ describe("didPathSegment", () => {
         ["encodes the % of a did:web port so the decoded DID matches", "did:web:host%3A8443:realm", "did:web:host%253A8443:realm"],
         ["keeps colons and percent-encodes the rest", "did:web:a?x#y/z%3A", "did:web:a%3Fx%23y%2Fz%253A"],
         ["cannot form a dot segment", "did:x/../did:web:victim", "did:x%2F..%2Fdid:web:victim"],
+        ["keeps an encoded dot out of the dot-segment rules", "%2e%2e", "%252e%252e"],
+        ["addresses a value without the did: prefix", "participant-1", "participant-1"],
     ])("%s", (_, did, expected) => {
         expect(didPathSegment(did)).toBe(expected);
     });
 
-    it.each(["..", "did-web:a", ""])("rejects %j without the did: prefix", (did) => {
+    it.each(["..", ".", ""])("rejects %j, which would address another resource", (did) => {
         expect(() => didPathSegment(did)).toThrow();
     });
 });
@@ -163,6 +165,29 @@ describe("crafted DIDs", () => {
         await call();
 
         expect(fetchMock.mock.calls.map(([url, init]) => `${init?.method} ${String(url)}`)).toEqual(expected);
+    });
+});
+
+describe("DIDs without the did: prefix", () => {
+    const FREE_TEXT_DID = "participant-1";
+
+    it("can be removed after an unscoped write", async () => {
+        respondWith(201, 204);
+
+        await registerIssuer(REGISTRY_URL, { did: FREE_TEXT_DID, credentials: [] });
+        await expect(unregisterIssuer(REGISTRY_URL, FREE_TEXT_DID)).resolves.toBe("issuer-removed");
+
+        expect(fetchMock.mock.calls.map(([url, init]) => `${init?.method} ${String(url)}`))
+            .toEqual([`POST ${REGISTRY_URL}`, `DELETE ${REGISTRY_URL}/${FREE_TEXT_DID}`]);
+    });
+
+    it.each<[string, RegisterOptions]>([
+        ["unscoped", {}],
+        ["scoped", { credentials: [], dataspaceId: DATASPACE_ID }],
+    ])("are not written %s when no removal could address them", async (_, options) => {
+        await expect(registerIssuer(REGISTRY_URL, { did: "..", credentials: [] }, options)).rejects.toThrow();
+
+        expect(fetchMock).not.toHaveBeenCalled();
     });
 });
 
@@ -214,7 +239,8 @@ describe("unregisterIssuer", () => {
 
         await expect(unregisterIssuer(REGISTRY_URL, DID)).resolves.toBe(expected);
 
-        expect(fetchMock).toHaveBeenCalledExactlyOnceWith(LEGACY_URL, { method: "DELETE" });
+        expect(fetchMock).toHaveBeenCalledOnce();
+        expect(fetchMock.mock.calls.map(([url, init]) => [String(url), init])).toEqual([[LEGACY_URL, { method: "DELETE" }]]);
     });
 
     it("treats a null dataspaceId as unscoped", async () => {
