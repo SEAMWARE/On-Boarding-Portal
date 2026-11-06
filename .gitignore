@@ -9,3 +9,4 @@ files
 Chart.lock
 /values/
 /templates/
+.pnpm-store

@@ -285,12 +285,21 @@ app:
               - view-clients
     keys:
       curveType: P-256
+  # Trust Issuer Registry: `{ url, credentials?, dataspaceId? }` like a `til` entry below.
   tir: {}
   # Trusted Issuers Lists: third-party registries notified alongside the TIR on
   # register/unregister. Best-effort, one entry per URL — a failure on one entry is
   # logged and does not affect the others or the TIR registration. Each entry is
-  # `{ url, credentials? }`; `credentials` defaults to an empty list (see README).
+  # `{ url, credentials?, dataspaceId? }`; `credentials` defaults to an empty list.
+  # `dataspaceId` writes the trust as that data space's membership grant and then
+  # requires non-empty `credentials`, which then also restrict the entry to the listed
+  # credential types, including in the unscoped fallback. Unregister removes each entry
+  # the way it was recorded on the registration: a scoped entry loses only its grant (see README).
   til: []
+  # Notifies participants directly when the portal removes one, via the publisher's internal
+  # `/events` (`url`, e.g. http://contract-management:9090/events); the CM-4 TIR watcher stays the backstop.
+  events:
+    enabled: false
 email:
   enabled: false
   type: "nodemailer"

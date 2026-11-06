@@ -1,37 +1,54 @@
 import { TilConfig } from "../type/app-config";
 import { TrusterIssuer } from "../type/truster-issuer";
+import { TrustWrite } from "../type/trust-write";
 import { configService } from "./config.service";
 import { logger } from "./logger";
-import { normalizeIssuerUrl, registerIssuer, unregisterIssuer } from "./registry-client";
+import { AlreadyRegisteredError, normalizeIssuerUrl, registerIssuer, RegistryRemoval, RemovalOutcome, removeRecordedTrust, validateRegistryConfig } from "./registry-client";
 
 interface TilEntry {
     url: URL;
     credentials?: TilConfig['credentials'];
+    dataspaceId?: string;
 }
 
-class TilService {
+export class TilService {
     private readonly tilEntries: TilEntry[];
 
     constructor(tilConfigs: TilConfig[] = []) {
-        this.tilEntries = tilConfigs.map(({ url, credentials }) => ({
+        tilConfigs.forEach(validateRegistryConfig);
+        this.tilEntries = tilConfigs.map(({ url, credentials, dataspaceId }) => ({
             url: normalizeIssuerUrl(url),
             credentials,
+            dataspaceId,
         }));
     }
 
-    async registerDid(trusterIssuer: TrusterIssuer): Promise<void> {
-        await Promise.all(this.tilEntries.map(({ url, credentials }) =>
-            registerIssuer(url, trusterIssuer, credentials ?? trusterIssuer.credentials)
-                .catch((error) => logger.warn(`Error adding did to TIL '${url}':`, error))
+    /** Best-effort: returns the TILs that hold the issuer afterwards; other failures are logged only. */
+    async registerDid(trusterIssuer: TrusterIssuer): Promise<TrustWrite[]> {
+        const writes = await Promise.all(this.tilEntries.map(({ url, credentials, dataspaceId }) =>
+            registerIssuer(url, trusterIssuer, { credentials, dataspaceId })
+                .then((scope): TrustWrite => ({ registry: url.toString(), scope }))
+                .catch((error): TrustWrite | null => {
+                    if (error instanceof AlreadyRegisteredError) {
+                        logger.warn(`DID ${trusterIssuer.did} was already registered in TIL '${url}', recording it as not written by the portal`);
+                        return { registry: url.toString(), scope: null, alreadyRegistered: true };
+                    }
+                    logger.warn(`Error adding did to TIL '${url}':`, error);
+                    return null;
+                })
         ));
+        return writes.filter((write) => write !== null);
     }
 
-    async deleteDid(did: string): Promise<boolean[]> {
+    /** Removes the trust recorded in `trustWrites` from every TIL; a thrown error becomes `failed`. */
+    async deleteDid(did: string, trustWrites: TrustWrite[] | null): Promise<RegistryRemoval[]> {
         return Promise.all(this.tilEntries.map(({ url }) =>
-            unregisterIssuer(url, did).catch((error) => {
-                logger.warn(`Error removing did from TIL '${url}':`, error);
-                return false;
-            })
+            removeRecordedTrust(url, did, trustWrites)
+                .catch((error): RemovalOutcome => {
+                    logger.warn(`Error removing did from TIL '${url}':`, error);
+                    return 'failed';
+                })
+                .then((outcome) => ({ registry: url.toString(), outcome }))
         ));
     }
 }
